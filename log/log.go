@@ -94,8 +94,7 @@ func Infof(format string, args ...interface{}) {
 	sugar.Infof(format, args...)
 }
 
-// Init initializes the global logger.
-func Init() {
+func init() {
 	enc := zap.NewDevelopmentEncoderConfig()
 	enc.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	cfg := zap.Config{
