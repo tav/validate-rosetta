@@ -19,4 +19,3 @@
 cd rosetta-specifications
 git remote update
 git merge origin/master
-cp api.json ../
