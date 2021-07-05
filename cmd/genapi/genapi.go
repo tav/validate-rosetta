@@ -17,7 +17,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"go/format"
 	"os"
@@ -27,11 +26,13 @@ import (
 	"strings"
 
 	"github.com/tav/validate-rosetta/log"
+	"gopkg.in/yaml.v3"
 )
 
-// var match = map[string]bool{
-// 	"/account/balance": true,
-// }
+var (
+	exitAfter  = ""
+	exitBefore = ""
+)
 
 type Endpoint struct {
 	Description string
@@ -43,14 +44,15 @@ type Endpoint struct {
 }
 
 type Field struct {
+	Array       bool
 	Description string
 	Ident       string
-	Item        string // for "slice" types
-	MinZero     bool   // for "float64" / "int32" / "int64" types
+	MinZero     bool // for "float64" / "int32" / "int64" types
 	Model       *Model
 	Name        string
 	Ref         string
 	Required    bool
+	Validate    bool
 	Type        string
 }
 
@@ -59,12 +61,85 @@ type Model struct {
 	Enum        []string // for "string" types
 	Fields      []*Field // for "struct" types
 	MinZero     bool     // for "int64" types
+	Referenced  []*Model
 	Name        string
 	Type        string
+	Validate    bool
 }
 
-func (m *Model) Validate() bool {
+func (m *Model) ValidateStatus() bool {
 	return len(m.Enum) > 0 || m.MinZero
+}
+
+func commentLines(text string) [][]byte {
+	lines := [][]byte{}
+	line := []byte{}
+	split := bytes.Split(bytes.TrimSpace([]byte(text)), []byte("\n"))
+	last := len(split) - 1
+	for i, src := range split {
+		if len(src) == 0 || src[0] == '*' {
+			if len(line) > 0 {
+				line = append(line, '.')
+				lines = append(lines, []byte(string(line)))
+			}
+			lines = append(lines, []byte(src))
+			line = line[:0]
+			continue
+		}
+		if len(line) > 0 {
+			line = append(line, ' ')
+		}
+		line = append(line, src...)
+		if i == last {
+			line = append(line, '.')
+			lines = append(lines, []byte(string(line)))
+		}
+	}
+	return lines
+}
+
+func commentPrefix(tabs int) []byte {
+	prefix := make([]byte, tabs+3)
+	for i := 0; i < tabs; i++ {
+		prefix[i] = '\t'
+	}
+	prefix[tabs] = '/'
+	prefix[tabs+1] = '/'
+	prefix[tabs+2] = ' '
+	return prefix
+}
+
+func genFile(endpoints []*Endpoint, models []*Model) []byte {
+	if exitBefore == "genFile" {
+		os.Exit(0)
+	}
+	buf := &bytes.Buffer{}
+	writePrelude(buf)
+	writeEndpoints(buf, endpoints)
+	writeModels(buf, models)
+	if exitBefore == "format" {
+		fmt.Println(buf.String())
+		os.Exit(0)
+	}
+	src, err := format.Source(buf.Bytes())
+	if err != nil {
+		log.Fatalf("Got error formatting Go code: %s", err)
+	}
+	if exitAfter == "format" {
+		fmt.Println(string(src))
+		os.Exit(0)
+	}
+	return src
+}
+
+func getGitRoot() string {
+	buf := &bytes.Buffer{}
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Stdout = buf
+	if err := cmd.Run(); err != nil {
+		log.Fatalf("Failed to run git rev-parse: %s", err)
+	}
+	return strings.TrimSpace(buf.String())
 }
 
 func getIdent(name string) string {
@@ -76,7 +151,11 @@ func getIdent(name string) string {
 		ident = append(ident, elem[0]-32)
 		ident = append(ident, elem[1:]...)
 	}
-	return string(ident)
+	id := string(ident)
+	if id == "PeerId" {
+		return "PeerID"
+	}
+	return id
 }
 
 func getModelName(src string) string {
@@ -99,16 +178,27 @@ func getRPCModel(src map[string]interface{}, elems ...string) string {
 	return getModelName(getPath(src, elems...))
 }
 
-func process(spec map[string]interface{}) ([]*Endpoint, []*Model) {
-	var (
-		endpoints []*Endpoint
-		models    []*Model
-	)
+func getSpec(root string) (string, map[string]interface{}) {
+	specDir := filepath.Join(root, "cmd", "genapi", "rosetta-specifications")
+	if err := os.Chdir(specDir); err != nil {
+		log.Fatalf("Unable to switch to the rosetta-specifications directory: %s", err)
+	}
+	apiPath := filepath.Join(specDir, "api.yaml")
+	data, err := os.ReadFile("api.yaml")
+	if err != nil {
+		log.Fatalf("Unable to read %s: %s", apiPath, err)
+	}
+	spec := map[string]interface{}{}
+	if err := yaml.Unmarshal(data, &spec); err != nil {
+		log.Fatalf("Unable to decode %s: %s", apiPath, err)
+	}
+	return specDir, spec
+}
+
+func processEndpoints(specDir string, spec map[string]interface{}) []*Endpoint {
+	var endpoints []*Endpoint
 	paths := spec["paths"].(map[string]interface{})
 	for path, info := range paths {
-		// if !match[path] {
-		// 	continue
-		// }
 		info := info.(map[string]interface{})["post"].(map[string]interface{})
 		var name []byte
 		for _, elem := range strings.Split(path, "/") {
@@ -127,23 +217,49 @@ func process(spec map[string]interface{}) ([]*Endpoint, []*Model) {
 			URL:         path,
 		})
 	}
+	return endpoints
+}
+
+func processModels(specDir string, spec map[string]interface{}) []*Model {
+	var models []*Model
 	components := spec["components"].(map[string]interface{})
 	schemas := components["schemas"].(map[string]interface{})
+	mapping := map[string]*Model{}
 	for name, info := range schemas {
-		info := info.(map[string]interface{})
 		model := &Model{
-			Description: info["description"].(string),
-			Name:        name,
+			Name: name,
 		}
+		info := info.(map[string]interface{})
+		if ref := info["$ref"]; ref != nil {
+			ref := ref.(string)
+			filename := ref[strings.LastIndexByte(ref, '/'):]
+			path := filepath.Join(specDir, "models", filename)
+			data, err := os.ReadFile(path)
+			if err != nil {
+				log.Fatalf("Unable to read %s: %s", path, err)
+			}
+			info = map[string]interface{}{}
+			if err := yaml.Unmarshal(data, &info); err != nil {
+				log.Fatalf("Unable to decode %s: %s", path, err)
+			}
+		}
+		model.Description = info["description"].(string)
 		typ := info["type"].(string)
 		switch typ {
 		case "object":
 			model.Type = "struct"
+			required := map[string]bool{}
+			if info["required"] != nil {
+				for _, name := range info["required"].([]interface{}) {
+					required[name.(string)] = true
+				}
+			}
 			props := info["properties"].(map[string]interface{})
 			for name, info := range props {
 				field := &Field{
-					Ident: getIdent(name),
-					Name:  name,
+					Ident:    getIdent(name),
+					Name:     name,
+					Required: required[name],
 				}
 				info := info.(map[string]interface{})
 				ref := info["$ref"]
@@ -157,9 +273,22 @@ func process(spec map[string]interface{}) ([]*Endpoint, []*Model) {
 					case "string":
 						field.Type = "string"
 					case "array":
-						field.Type = typ
+						field.Array = true
+						field.Type = ""
+						items := info["items"].(map[string]interface{})
+						ref := items["$ref"]
+						if ref == nil {
+							typ := items["type"].(string)
+							if typ != "string" {
+								log.Fatalf("Unexpected array elem type: %q", typ)
+							}
+							field.Type = "[]string"
+						} else {
+							field.Ref = ref.(string)
+						}
 					case "object":
-						field.Type = "map[string]interface{}"
+						field.Array = true
+						field.Type = "MapObject"
 					case "integer":
 						format := info["format"].(string)
 						switch format {
@@ -172,7 +301,7 @@ func process(spec map[string]interface{}) ([]*Endpoint, []*Model) {
 						}
 						minimum := info["minimum"]
 						if minimum != nil {
-							minimum := minimum.(float64)
+							minimum := minimum.(int)
 							if minimum != 0 {
 								log.Fatalf("Unknown minimum value: %d", minimum)
 							}
@@ -201,6 +330,7 @@ func process(spec map[string]interface{}) ([]*Endpoint, []*Model) {
 					field.Ref = ref.(string)
 				}
 				if name == "hex_bytes" {
+					field.Array = true
 					field.Ident = "Bytes"
 					field.Type = "[]byte"
 				}
@@ -225,7 +355,7 @@ func process(spec map[string]interface{}) ([]*Endpoint, []*Model) {
 			model.Type = "int64"
 			minimum := info["minimum"]
 			if minimum != nil {
-				minimum := minimum.(float64)
+				minimum := minimum.(int)
 				if minimum != 0 {
 					log.Fatalf("Unknown minimum value: %d", minimum)
 				}
@@ -234,26 +364,76 @@ func process(spec map[string]interface{}) ([]*Endpoint, []*Model) {
 		default:
 			log.Fatalf("Unknown component type: %q", typ)
 		}
+		mapping[model.Name] = model
 		models = append(models, model)
 	}
-	// os.Exit(0)
-	return endpoints, models
+	for _, model := range models {
+		for _, field := range model.Fields {
+			if field.Ref == "" {
+				continue
+			}
+			ref := getModelName(field.Ref)
+			idx := strings.LastIndexByte(ref, '.')
+			if idx >= 0 {
+				ref = ref[:idx]
+			}
+			refModel, ok := mapping[ref]
+			if !ok {
+				log.Fatalf("Could not find model %s", ref)
+			}
+			refModel.Referenced = append(refModel.Referenced, model)
+			field.Model = refModel
+			field.Ref = ref
+			switch refModel.Type {
+			case "struct":
+				if field.Array {
+					field.Type = "[]" + refModel.Name
+				} else {
+					field.Type = refModel.Name
+				}
+			case "int64", "string":
+				if field.Array {
+					log.Fatalf("Unexpected array ref model type: %q", refModel.Type)
+				}
+				field.Type = refModel.Name
+			default:
+				log.Fatalf("Unexpected ref model type: %q", refModel.Type)
+			}
+		}
+	}
+	for _, model := range models {
+		for _, ref := range model.Referenced {
+			if model.Validate {
+
+			}
+		}
+	}
+	return models
 }
 
 func writeComment(b *bytes.Buffer, text string, tabs int) {
-	prefix := make([]byte, tabs+3)
-	for i := 0; i < tabs; i++ {
-		prefix[i] = '\t'
+	if text[0] == '\n' {
+		log.Fatalf("Got %q", text)
 	}
-	prefix[tabs] = '/'
-	prefix[tabs+1] = '/'
-	prefix[tabs+2] = ' '
-	last := len(text) - 1
-	limit := 77 - (tabs * 8) // assume tabs take up 4 spaces
+	prefix := commentPrefix(tabs)
+	limit := 77 - (tabs * 4) // assume tabs take up 4 spaces
+	for _, line := range commentLines(text) {
+		if len(line) == 0 || line[0] == '*' {
+			b.Write(prefix)
+			b.Write(line)
+			b.WriteByte('\n')
+			continue
+		}
+		writeCommentLine(b, line, prefix, limit)
+	}
+}
+
+func writeCommentLine(b *bytes.Buffer, src []byte, prefix []byte, limit int) {
+	last := len(src) - 1
 	line := []byte{}
 	word := []byte{}
-	for i := 0; i < len(text); i++ {
-		char := text[i]
+	for i := 0; i < len(src); i++ {
+		char := src[i]
 		if char == ' ' || i == last {
 			length := len(word)
 			if len(line) > 0 {
@@ -295,65 +475,115 @@ func writeComment(b *bytes.Buffer, text string, tabs int) {
 func writeEndpoints(b *bytes.Buffer, endpoints []*Endpoint) {
 }
 
+func writeEqualFunc(b *bytes.Buffer, model *Model, equals map[string]bool) {
+	fmt.Fprintf(b, `// Equal returns whether two %s values are equal.
+	func (v %s) Equal(o %s) bool {
+		return `, model.Name, model.Name, model.Name)
+	for i, field := range model.Fields {
+		if i != 0 {
+			b.WriteString(" && \n\t\t")
+		}
+		if !field.Required {
+			fmt.Fprintf(b, "v.%sSet == o.%sSet && ", field.Ident, field.Ident)
+		}
+		switch field.Type {
+		case "string", "int32", "int64", "bool", "float64":
+			fmt.Fprintf(b, "v.%s == o.%s", field.Ident, field.Ident)
+		case "MapObject":
+			fmt.Fprintf(b, "MapObjectEqual(v.%s, o.%s)", field.Ident, field.Ident)
+		case "[]byte":
+			fmt.Fprintf(b, "bytes.Equal(v.%s, o.%s)", field.Ident, field.Ident)
+		case "[]string":
+			fmt.Fprintf(b, "StringSliceEqual(v.%s, o.%s)", field.Ident, field.Ident)
+		default:
+			if field.Array {
+				equals[field.Model.Name] = true
+				fmt.Fprintf(b, "%sSliceEqual(v.%s, o.%s)", field.Model.Name, field.Ident, field.Ident)
+			} else {
+				if field.Model != nil && field.Model.Type == "struct" {
+					fmt.Fprintf(b, "v.%s.Equal(o.%s)", field.Ident, field.Ident)
+				} else {
+					fmt.Fprintf(b, "v.%s == o.%s", field.Ident, field.Ident)
+				}
+			}
+		}
+	}
+	b.WriteString("\n}\n\n")
+}
+
+func writeGenFile(root string, src []byte) {
+	outPath := filepath.Join(root, "api", "gen.go")
+	f, err := os.Create(outPath)
+	if err != nil {
+		log.Fatalf("Failed to create %s: %s", outPath, err)
+	}
+	if _, err := f.Write(src); err != nil {
+		log.Fatalf("Failed to write to %s: %s", outPath, err)
+	}
+	if err := f.Close(); err != nil {
+		log.Fatalf("Failed to close %s: %s", outPath, err)
+	}
+}
+
+func writeInt64Model(b *bytes.Buffer, model *Model) {
+	fmt.Fprintf(b, "type %s int64\n\n", model.Name)
+	if model.MinZero {
+		fmt.Fprintf(b, `// Validate the %s value.
+func (v %s) Validate() error {
+if v < 0 {
+return fmt.Errorf("api: %s value cannot be negative: %%d", v)
+}
+return nil
+}
+
+`, model.Name, model.Name, model.Name)
+	}
+}
+
+func writeModelComment(b *bytes.Buffer, model *Model) {
+	if model.Description == "" {
+		b.WriteString("// ")
+		b.WriteString(model.Name)
+		b.WriteString(" type.\n")
+	} else {
+		if !strings.HasPrefix(model.Description, model.Name+" ") {
+			b.WriteString("// ")
+			b.WriteString(model.Name)
+			b.WriteString(" type.\n")
+			b.WriteString("//\n")
+		}
+		writeComment(b, model.Description, 0)
+	}
+}
+
 func writeModels(b *bytes.Buffer, models []*Model) {
 	sort.Slice(models, func(i, j int) bool {
 		return models[i].Name < models[j].Name
 	})
+	equals := map[string]bool{}
 	for _, model := range models {
-		b.WriteString("// ")
-		b.WriteString(model.Name)
-		b.WriteString(" type.\n")
-		if model.Description != "" {
-			b.WriteString("//\n")
-			writeComment(b, model.Description, 0)
-		}
+		writeModelComment(b, model)
 		switch model.Type {
 		case "struct":
-			fmt.Fprintf(b, "type %s struct {\n", model.Name)
-			for _, field := range model.Fields {
-				if field.Description != "" {
-					writeComment(b, field.Description, 1)
-				}
-				fmt.Fprintf(b, "\t%s\tstring\n", field.Ident)
-			}
-			fmt.Fprint(b, "}\n\n")
+			writeStructModel(b, model)
+			writeEqualFunc(b, model, equals)
+			writeResetFunc(b, model)
 		case "string":
-			fmt.Fprintf(b, "type %s string\n\n", model.Name)
-			if len(model.Enum) > 0 {
-				fmt.Fprintf(b, `func (v %s) Validate() error {
-	if !(`, model.Name)
-				for i, variant := range model.Enum {
-					if i != 0 {
-						b.WriteString(" || ")
-					}
-					fmt.Fprintf(b, "v == %q", variant)
-				}
-				fmt.Fprintf(b, `) {
-		return fmt.Errorf("api: invalid %s value: %%q", v)
-	}
-	return nil
-}
-`, model.Name)
-			}
+			writeStringModel(b, model)
 		case "int64":
-			fmt.Fprintf(b, "type %s int64\n\n", model.Name)
-			if model.MinZero {
-				fmt.Fprintf(b, `func (v %s) Validate() error {
-	if v < 0 {
-		return fmt.Errorf("api: %s value cannot be negative: %%d", v)
-	}
-	return nil
-}
-`, model.Name, model.Name)
-			}
+			writeInt64Model(b, model)
 		default:
 			log.Fatalf("Unknown model type: %q", model.Type)
 		}
 	}
+	writeSliceEqualFuncs(b, equals)
 }
 
 func writePrelude(b *bytes.Buffer) {
-	b.WriteString(`// Copyright 2021 Coinbase, Inc.
+	b.WriteString(`// DO NOT EDIT.
+// Generated by running: go run cmd/genapi/genapi.go
+
+// Copyright 2021 Coinbase, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -370,47 +600,127 @@ func writePrelude(b *bytes.Buffer) {
 package api
 
 import (
+	"bytes"
 	"fmt"
 )
 
 `)
 }
 
+func writeResetFunc(b *bytes.Buffer, model *Model) {
+	fmt.Fprintf(b, `// Reset resets %s so that it can be reused.
+	func (v *%s) Reset() {
+	`, model.Name, model.Name)
+	for _, field := range model.Fields {
+		switch field.Type {
+		case "string":
+			fmt.Fprintf(b, "\tv.%s = \"\"\n", field.Ident)
+		case "int32", "int64", "float64":
+			fmt.Fprintf(b, "\tv.%s = 0\n", field.Ident)
+		case "bool":
+			fmt.Fprintf(b, "\tv.%s = false\n", field.Ident)
+		default:
+			if field.Array {
+				fmt.Fprintf(b, `	if len(v.%s) > 0 {
+			v.%s = v.%s[:0]
+		}
+	`, field.Ident, field.Ident, field.Ident)
+			} else if field.Model != nil {
+				refModel := field.Model
+				switch refModel.Type {
+				case "string":
+					fmt.Fprintf(b, "\tv.%s = \"\"\n", field.Ident)
+				case "int32", "int64", "float64":
+					fmt.Fprintf(b, "\tv.%s = 0\n", field.Ident)
+				case "bool":
+					fmt.Fprintf(b, "\tv.%s = false\n", field.Ident)
+				default:
+					fmt.Fprintf(b, "\tv.%s.Reset()\n", field.Ident)
+				}
+			} else {
+				fmt.Fprintf(b, "\tv.%s.Reset()\n", field.Ident)
+			}
+		}
+		if !field.Required {
+			fmt.Fprintf(b, "\tv.%sSet = false\n", field.Ident)
+		}
+	}
+	b.WriteString("}\n\n")
+}
+
+func writeSliceEqualFuncs(b *bytes.Buffer, equals map[string]bool) {
+	eqTypes := make([]string, len(equals))
+	idx := 0
+	for typ := range equals {
+		eqTypes[idx] = typ
+		idx++
+	}
+	sort.Strings(eqTypes)
+	for _, typ := range eqTypes {
+		fmt.Fprintf(b, `// %sSliceEqual returns whether the given %s slice values are equal.
+func %sSliceEqual(a, b []%s) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, elem := range a {
+		if !elem.Equal(b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+`, typ, typ, typ, typ)
+	}
+}
+
+func writeStringModel(b *bytes.Buffer, model *Model) {
+	fmt.Fprintf(b, "type %s string\n\n", model.Name)
+	if len(model.Enum) > 0 {
+		fmt.Fprintf(b, `// Validate the %s value.
+func (v %s) Validate() error {
+if !(`, model.Name, model.Name)
+		for i, variant := range model.Enum {
+			if i != 0 {
+				b.WriteString(" || ")
+			}
+			fmt.Fprintf(b, "v == %q", variant)
+		}
+		fmt.Fprintf(b, `) {
+return fmt.Errorf("api: invalid %s value: %%q", v)
+}
+return nil
+}
+
+`, model.Name)
+	}
+}
+
+func writeStructModel(b *bytes.Buffer, model *Model) {
+	fmt.Fprintf(b, "type %s struct {\n", model.Name)
+	for _, field := range model.Fields {
+		if field.Description != "" {
+			writeComment(b, field.Description, 1)
+		}
+		fmt.Fprintf(b, "\t%s\t%s\n", field.Ident, field.Type)
+		if !field.Required {
+			fmt.Fprintf(b, "\t%sSet\tbool\n", field.Ident)
+		}
+	}
+	fmt.Fprint(b, "}\n\n")
+}
+
 func main() {
-	buf := &bytes.Buffer{}
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Stdout = buf
-	if err := cmd.Run(); err != nil {
-		log.Fatalf("Failed to run git rev-parse: %s", err)
-	}
-	root := strings.TrimSpace(buf.String())
-	apiPath := filepath.Join(root, "cmd", "genapi", "api.json")
-	data, err := os.ReadFile(apiPath)
-	if err != nil {
-		log.Fatalf("Unable to read %s: %s", apiPath, err)
-	}
-	spec := map[string]interface{}{}
-	if err := json.Unmarshal(data, &spec); err != nil {
-		log.Fatalf("Unable to decode %s: %s", apiPath, err)
-	}
-	endpoints, models := process(spec)
-	outPath := filepath.Join(root, "api", "gen.go")
-	buf.Reset()
-	writePrelude(buf)
-	writeEndpoints(buf, endpoints)
-	writeModels(buf, models)
-	src, err := format.Source(buf.Bytes())
-	if err != nil {
-		log.Fatalf("Got error formatting Go code: %s", err)
-	}
-	f, err := os.Create(outPath)
-	if err != nil {
-		log.Fatalf("Failed to create %s: %s", outPath, err)
-	}
-	if _, err := f.Write(src); err != nil {
-		log.Fatalf("Failed to write to %s: %s", outPath, err)
-	}
-	if err := f.Close(); err != nil {
-		log.Fatalf("Failed to close %s: %s", outPath, err)
-	}
+	root := getGitRoot()
+	specDir, spec := getSpec(root)
+	endpoints := processEndpoints(specDir, spec)
+	models := processModels(specDir, spec)
+	src := genFile(endpoints, models)
+	writeGenFile(root, src)
+}
+
+func init() {
+	// exitAfter = "format"
+	// exitBefore = "genFile"
+	// exitBefore = "format"
 }
