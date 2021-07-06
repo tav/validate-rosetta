@@ -738,7 +738,10 @@ func writeStructModel(b *bytes.Buffer, model *Model) {
 		if field.Description != "" {
 			writeComment(b, field.Description, 1)
 		}
-		fmt.Fprintf(b, "\t%s\t%s\n", field.Ident, field.Type)
+		fmt.Fprintf(
+			b, "\t%s\t%s `json:\"%s\"`\n",
+			field.Ident, field.Type, field.Name,
+		)
 		if field.Optional {
 			fmt.Fprintf(b, "\t%sSet\tbool\n", field.Ident)
 		}
@@ -761,5 +764,5 @@ func init() {
 
 	// exitBefore = "genFile"
 	// exitBefore = "format"
-	exitBefore = "writeFile"
+	// exitBefore = "writeFile"
 }
