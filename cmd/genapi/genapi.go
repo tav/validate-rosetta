@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Command genapi generates api/gen.go from the Rosetta spec.
+// Command genapi generates api/api.go from the Rosetta spec.
 package main
 
 import (
@@ -30,7 +30,6 @@ import (
 )
 
 var (
-	exitAfter  = ""
 	exitBefore = ""
 )
 
@@ -44,14 +43,14 @@ type Endpoint struct {
 }
 
 type Field struct {
-	Array       bool
 	Description string
 	Ident       string
 	MinZero     bool // for "float64" / "int32" / "int64" types
 	Model       *Model
 	Name        string
 	Ref         string
-	Required    bool
+	Optional    bool
+	Slice       bool
 	Validate    bool
 	Type        string
 }
@@ -63,6 +62,7 @@ type Model struct {
 	MinZero     bool     // for "int64" types
 	Referenced  []*Model
 	Name        string
+	Network     bool
 	Type        string
 	Validate    bool
 }
@@ -115,6 +115,7 @@ func genFile(endpoints []*Endpoint, models []*Model) []byte {
 	}
 	buf := &bytes.Buffer{}
 	writePrelude(buf)
+	writeEnums(buf, models)
 	writeEndpoints(buf, endpoints)
 	writeModels(buf, models)
 	if exitBefore == "format" {
@@ -125,7 +126,7 @@ func genFile(endpoints []*Endpoint, models []*Model) []byte {
 	if err != nil {
 		log.Fatalf("Got error formatting Go code: %s", err)
 	}
-	if exitAfter == "format" {
+	if exitBefore == "writeFile" {
 		fmt.Println(string(src))
 		os.Exit(0)
 	}
@@ -148,11 +149,23 @@ func getIdent(name string) string {
 		if elem == "" {
 			continue
 		}
-		ident = append(ident, elem[0]-32)
+		lead := elem[0]
+		if lead >= 'a' && lead <= 'z' {
+			ident = append(ident, lead-32)
+		} else {
+			ident = append(ident, lead)
+		}
 		ident = append(ident, elem[1:]...)
 	}
 	id := string(ident)
-	if id == "PeerId" {
+	// NOTE(tav): We special-case certain identifiers so as to match Go's rules
+	// on initialisms.
+	switch id {
+	case "Ecdsa":
+		return "ECDSA"
+	case "EcdsaRecovery":
+		return "ECDSARecovery"
+	case "PeerId":
 		return "PeerID"
 	}
 	return id
@@ -259,7 +272,7 @@ func processModels(specDir string, spec map[string]interface{}) []*Model {
 				field := &Field{
 					Ident:    getIdent(name),
 					Name:     name,
-					Required: required[name],
+					Optional: !required[name],
 				}
 				info := info.(map[string]interface{})
 				ref := info["$ref"]
@@ -273,7 +286,7 @@ func processModels(specDir string, spec map[string]interface{}) []*Model {
 					case "string":
 						field.Type = "string"
 					case "array":
-						field.Array = true
+						field.Slice = true
 						field.Type = ""
 						items := info["items"].(map[string]interface{})
 						ref := items["$ref"]
@@ -287,7 +300,7 @@ func processModels(specDir string, spec map[string]interface{}) []*Model {
 							field.Ref = ref.(string)
 						}
 					case "object":
-						field.Array = true
+						field.Slice = true
 						field.Type = "MapObject"
 					case "integer":
 						format := info["format"].(string)
@@ -330,7 +343,7 @@ func processModels(specDir string, spec map[string]interface{}) []*Model {
 					field.Ref = ref.(string)
 				}
 				if name == "hex_bytes" {
-					field.Array = true
+					field.Slice = true
 					field.Ident = "Bytes"
 					field.Type = "[]byte"
 				}
@@ -347,6 +360,7 @@ func processModels(specDir string, spec map[string]interface{}) []*Model {
 					model.Enum = append(model.Enum, variant.(string))
 				}
 			}
+			sort.Strings(model.Enum)
 		case "integer":
 			format := info["format"].(string)
 			if format != "int64" {
@@ -381,18 +395,21 @@ func processModels(specDir string, spec map[string]interface{}) []*Model {
 			if !ok {
 				log.Fatalf("Could not find model %s", ref)
 			}
+			if field.Name == "network" && refModel.Name == "NetworkIdentifier" {
+				model.Network = true
+			}
 			refModel.Referenced = append(refModel.Referenced, model)
 			field.Model = refModel
 			field.Ref = ref
 			switch refModel.Type {
 			case "struct":
-				if field.Array {
+				if field.Slice {
 					field.Type = "[]" + refModel.Name
 				} else {
 					field.Type = refModel.Name
 				}
 			case "int64", "string":
-				if field.Array {
+				if field.Slice {
 					log.Fatalf("Unexpected array ref model type: %q", refModel.Type)
 				}
 				field.Type = refModel.Name
@@ -401,19 +418,22 @@ func processModels(specDir string, spec map[string]interface{}) []*Model {
 			}
 		}
 	}
-	for _, model := range models {
-		for _, ref := range model.Referenced {
-			if model.Validate {
+	// for _, model := range models {
+	// 	for _, ref := range model.Referenced {
+	// 		if model.Validate {
 
-			}
-		}
-	}
+	// 		}
+	// 	}
+	// }
+	sort.Slice(models, func(i, j int) bool {
+		return models[i].Name < models[j].Name
+	})
 	return models
 }
 
 func writeComment(b *bytes.Buffer, text string, tabs int) {
 	if text[0] == '\n' {
-		log.Fatalf("Got %q", text)
+		log.Fatalf("Got comment with a leading newline: %q", text)
 	}
 	prefix := commentPrefix(tabs)
 	limit := 77 - (tabs * 4) // assume tabs take up 4 spaces
@@ -475,6 +495,25 @@ func writeCommentLine(b *bytes.Buffer, src []byte, prefix []byte, limit int) {
 func writeEndpoints(b *bytes.Buffer, endpoints []*Endpoint) {
 }
 
+func writeEnums(b *bytes.Buffer, models []*Model) {
+	for _, model := range models {
+		if len(model.Enum) == 0 {
+			continue
+		}
+		fmt.Fprintf(b, `// %s values.
+const (
+`, model.Name)
+		for _, variant := range model.Enum {
+			fmt.Fprintf(
+				b, "\t%s %s = %q\n", getIdent(variant), model.Name, variant,
+			)
+		}
+		fmt.Fprintf(b, `)
+
+`)
+	}
+}
+
 func writeEqualFunc(b *bytes.Buffer, model *Model, equals map[string]bool) {
 	fmt.Fprintf(b, `// Equal returns whether two %s values are equal.
 	func (v %s) Equal(o %s) bool {
@@ -483,7 +522,7 @@ func writeEqualFunc(b *bytes.Buffer, model *Model, equals map[string]bool) {
 		if i != 0 {
 			b.WriteString(" && \n\t\t")
 		}
-		if !field.Required {
+		if field.Optional {
 			fmt.Fprintf(b, "v.%sSet == o.%sSet && ", field.Ident, field.Ident)
 		}
 		switch field.Type {
@@ -496,7 +535,7 @@ func writeEqualFunc(b *bytes.Buffer, model *Model, equals map[string]bool) {
 		case "[]string":
 			fmt.Fprintf(b, "StringSliceEqual(v.%s, o.%s)", field.Ident, field.Ident)
 		default:
-			if field.Array {
+			if field.Slice {
 				equals[field.Model.Name] = true
 				fmt.Fprintf(b, "%sSliceEqual(v.%s, o.%s)", field.Model.Name, field.Ident, field.Ident)
 			} else {
@@ -511,8 +550,8 @@ func writeEqualFunc(b *bytes.Buffer, model *Model, equals map[string]bool) {
 	b.WriteString("\n}\n\n")
 }
 
-func writeGenFile(root string, src []byte) {
-	outPath := filepath.Join(root, "api", "gen.go")
+func writeFile(root string, src []byte) {
+	outPath := filepath.Join(root, "api", "api.go")
 	f, err := os.Create(outPath)
 	if err != nil {
 		log.Fatalf("Failed to create %s: %s", outPath, err)
@@ -557,9 +596,6 @@ func writeModelComment(b *bytes.Buffer, model *Model) {
 }
 
 func writeModels(b *bytes.Buffer, models []*Model) {
-	sort.Slice(models, func(i, j int) bool {
-		return models[i].Name < models[j].Name
-	})
 	equals := map[string]bool{}
 	for _, model := range models {
 		writeModelComment(b, model)
@@ -573,7 +609,7 @@ func writeModels(b *bytes.Buffer, models []*Model) {
 		case "int64":
 			writeInt64Model(b, model)
 		default:
-			log.Fatalf("Unknown model type: %q", model.Type)
+			log.Fatalf("Unknown top-level model type: %q", model.Type)
 		}
 	}
 	writeSliceEqualFuncs(b, equals)
@@ -597,6 +633,7 @@ func writePrelude(b *bytes.Buffer) {
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package api provides a client for Rosetta API servers.
 package api
 
 import (
@@ -620,14 +657,13 @@ func writeResetFunc(b *bytes.Buffer, model *Model) {
 		case "bool":
 			fmt.Fprintf(b, "\tv.%s = false\n", field.Ident)
 		default:
-			if field.Array {
+			if field.Slice {
 				fmt.Fprintf(b, `	if len(v.%s) > 0 {
 			v.%s = v.%s[:0]
 		}
 	`, field.Ident, field.Ident, field.Ident)
 			} else if field.Model != nil {
-				refModel := field.Model
-				switch refModel.Type {
+				switch field.Model.Type {
 				case "string":
 					fmt.Fprintf(b, "\tv.%s = \"\"\n", field.Ident)
 				case "int32", "int64", "float64":
@@ -641,7 +677,7 @@ func writeResetFunc(b *bytes.Buffer, model *Model) {
 				fmt.Fprintf(b, "\tv.%s.Reset()\n", field.Ident)
 			}
 		}
-		if !field.Required {
+		if field.Optional {
 			fmt.Fprintf(b, "\tv.%sSet = false\n", field.Ident)
 		}
 	}
@@ -687,9 +723,9 @@ if !(`, model.Name, model.Name)
 			fmt.Fprintf(b, "v == %q", variant)
 		}
 		fmt.Fprintf(b, `) {
-return fmt.Errorf("api: invalid %s value: %%q", v)
-}
-return nil
+		return fmt.Errorf("api: invalid %s value: %%q", v)
+	}
+	return nil
 }
 
 `, model.Name)
@@ -703,7 +739,7 @@ func writeStructModel(b *bytes.Buffer, model *Model) {
 			writeComment(b, field.Description, 1)
 		}
 		fmt.Fprintf(b, "\t%s\t%s\n", field.Ident, field.Type)
-		if !field.Required {
+		if field.Optional {
 			fmt.Fprintf(b, "\t%sSet\tbool\n", field.Ident)
 		}
 	}
@@ -716,11 +752,14 @@ func main() {
 	endpoints := processEndpoints(specDir, spec)
 	models := processModels(specDir, spec)
 	src := genFile(endpoints, models)
-	writeGenFile(root, src)
+	writeFile(root, src)
 }
 
 func init() {
-	// exitAfter = "format"
+	// NOTE(tav): Uncomment one of the following stages to emit output for
+	// debugging during development.
+
 	// exitBefore = "genFile"
 	// exitBefore = "format"
+	exitBefore = "writeFile"
 }
