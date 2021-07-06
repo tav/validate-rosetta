@@ -1,0 +1,9 @@
+.DS_Store
+
+*.out
+*.prof
+*.test
+
+benchapi-data
+data/
+validate-rosetta
