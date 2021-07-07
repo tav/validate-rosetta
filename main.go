@@ -67,14 +67,19 @@ func initDB(path string, done <-chan bool) *store.DB {
 	return db
 }
 
-func runMethod(args []string, meth func(*validate.Process, context.Context, chan bool)) {
+func runMethod(args []string, exec func(*validate.Runner, context.Context) error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := initConfig(args)
 	done := make(chan bool, 1)
 	db := initDB(cfg.Directory, done)
-	proc := validate.New(cfg, db)
+	runner := validate.New(cfg, db)
 	process.SetExitHandler(cancel)
-	meth(proc, ctx, done)
+	err := exec(runner, ctx)
+	done <- true
+	if err != nil {
+		process.Exit(1)
+	}
+	process.Exit(0)
 }
 
 func main() {
@@ -105,7 +110,7 @@ Right now, this tool only supports transfer testing (for both account-based
 and UTXO-based blockchains). However, we plan to add support for testing
 arbitrary scenarios (i.e. staking, governance).`,
 		Run: func(cmd *cobra.Command, args []string) {
-			runMethod(args, (*validate.Process).ValidateConstructionAPI)
+			runMethod(args, (*validate.Runner).ValidateConstructionAPI)
 		},
 		Short: "Validate a Rosetta Construction API implementation",
 		Use:   "construction <config-file>",
@@ -148,7 +153,7 @@ absolute path to a JSON file containing initial balances with the
 bootstrap balance config. You can look at the examples folder for an example
 of what one of these files looks like.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			runMethod(args, (*validate.Process).ValidateDataAPI)
+			runMethod(args, (*validate.Runner).ValidateDataAPI)
 		},
 		Short: "Validate a Rosetta Data API implementation",
 		Use:   "data <config-file>",
