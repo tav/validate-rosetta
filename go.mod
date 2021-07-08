@@ -3,6 +3,7 @@ module github.com/tav/validate-rosetta
 go 1.16
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/coinbase/rosetta-cli v0.6.7
 	github.com/coinbase/rosetta-sdk-go v0.6.10
 	github.com/dgraph-io/badger/v3 v3.2103.0
