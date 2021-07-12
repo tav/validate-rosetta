@@ -19,8 +19,9 @@
 package api
 
 import (
-	"bytes"
 	"fmt"
+
+	"github.com/tav/validate-rosetta/json"
 )
 
 // BlockEventType values.
@@ -71,42 +72,289 @@ const (
 	SchnorrPoseidon SignatureType = "schnorr_poseidon"
 )
 
+// Client handles requests to Rosetta API servers.
+//
+// A Client can only be used to do one API call at a time. That is, do not
+// re-use a Client while a previous call is still being handled.
+type Client struct {
+	baseURL string
+}
+
+// OptionalAccountIdentifierType encapsulates an optional AccountIdentifier value.
+type OptionalAccountIdentifierType struct {
+	Set   bool
+	Value AccountIdentifier
+}
+
+// OptionalAmountType encapsulates an optional Amount value.
+type OptionalAmountType struct {
+	Set   bool
+	Value Amount
+}
+
+// OptionalBlockType encapsulates an optional Block value.
+type OptionalBlockType struct {
+	Set   bool
+	Value Block
+}
+
+// OptionalBlockIdentifierType encapsulates an optional BlockIdentifier value.
+type OptionalBlockIdentifierType struct {
+	Set   bool
+	Value BlockIdentifier
+}
+
+// OptionalBoolType encapsulates an optional bool value.
+type OptionalBoolType struct {
+	Set   bool
+	Value bool
+}
+
+// OptionalCoinChangeType encapsulates an optional CoinChange value.
+type OptionalCoinChangeType struct {
+	Set   bool
+	Value CoinChange
+}
+
+// OptionalCoinIdentifierType encapsulates an optional CoinIdentifier value.
+type OptionalCoinIdentifierType struct {
+	Set   bool
+	Value CoinIdentifier
+}
+
+// OptionalCurrencyType encapsulates an optional Currency value.
+type OptionalCurrencyType struct {
+	Set   bool
+	Value Currency
+}
+
+// OptionalExemptionTypeType encapsulates an optional ExemptionType value.
+type OptionalExemptionTypeType struct {
+	Set   bool
+	Value ExemptionType
+}
+
+// OptionalFloat64Type encapsulates an optional float64 value.
+type OptionalFloat64Type struct {
+	Set   bool
+	Value float64
+}
+
+// OptionalInt64Type encapsulates an optional int64 value.
+type OptionalInt64Type struct {
+	Set   bool
+	Value int64
+}
+
+// OptionalNetworkIdentifierType encapsulates an optional NetworkIdentifier value.
+type OptionalNetworkIdentifierType struct {
+	Set   bool
+	Value NetworkIdentifier
+}
+
+// OptionalOperatorType encapsulates an optional Operator value.
+type OptionalOperatorType struct {
+	Set   bool
+	Value Operator
+}
+
+// OptionalPartialBlockIdentifierType encapsulates an optional PartialBlockIdentifier value.
+type OptionalPartialBlockIdentifierType struct {
+	Set   bool
+	Value PartialBlockIdentifier
+}
+
+// OptionalSignatureTypeType encapsulates an optional SignatureType value.
+type OptionalSignatureTypeType struct {
+	Set   bool
+	Value SignatureType
+}
+
+// OptionalStringType encapsulates an optional string value.
+type OptionalStringType struct {
+	Set   bool
+	Value string
+}
+
+// OptionalSubAccountIdentifierType encapsulates an optional SubAccountIdentifier value.
+type OptionalSubAccountIdentifierType struct {
+	Set   bool
+	Value SubAccountIdentifier
+}
+
+// OptionalSubNetworkIdentifierType encapsulates an optional SubNetworkIdentifier value.
+type OptionalSubNetworkIdentifierType struct {
+	Set   bool
+	Value SubNetworkIdentifier
+}
+
+// OptionalSyncStatusType encapsulates an optional SyncStatus value.
+type OptionalSyncStatusType struct {
+	Set   bool
+	Value SyncStatus
+}
+
+// OptionalTransactionIdentifierType encapsulates an optional TransactionIdentifier value.
+type OptionalTransactionIdentifierType struct {
+	Set   bool
+	Value TransactionIdentifier
+}
+
+// OptionalAccountIdentifier creates an optional AccountIdentifier value.
+func OptionalAccountIdentifier(v AccountIdentifier) OptionalAccountIdentifierType {
+	return OptionalAccountIdentifierType{true, v}
+}
+
+// OptionalAmount creates an optional Amount value.
+func OptionalAmount(v Amount) OptionalAmountType {
+	return OptionalAmountType{true, v}
+}
+
+// OptionalBlock creates an optional Block value.
+func OptionalBlock(v Block) OptionalBlockType {
+	return OptionalBlockType{true, v}
+}
+
+// OptionalBlockIdentifier creates an optional BlockIdentifier value.
+func OptionalBlockIdentifier(v BlockIdentifier) OptionalBlockIdentifierType {
+	return OptionalBlockIdentifierType{true, v}
+}
+
+// OptionalBool creates an optional bool value.
+func OptionalBool(v bool) OptionalBoolType {
+	return OptionalBoolType{true, v}
+}
+
+// OptionalCoinChange creates an optional CoinChange value.
+func OptionalCoinChange(v CoinChange) OptionalCoinChangeType {
+	return OptionalCoinChangeType{true, v}
+}
+
+// OptionalCoinIdentifier creates an optional CoinIdentifier value.
+func OptionalCoinIdentifier(v CoinIdentifier) OptionalCoinIdentifierType {
+	return OptionalCoinIdentifierType{true, v}
+}
+
+// OptionalCurrency creates an optional Currency value.
+func OptionalCurrency(v Currency) OptionalCurrencyType {
+	return OptionalCurrencyType{true, v}
+}
+
+// OptionalExemptionType creates an optional ExemptionType value.
+func OptionalExemptionType(v ExemptionType) OptionalExemptionTypeType {
+	return OptionalExemptionTypeType{true, v}
+}
+
+// OptionalFloat64 creates an optional float64 value.
+func OptionalFloat64(v float64) OptionalFloat64Type {
+	return OptionalFloat64Type{true, v}
+}
+
+// OptionalInt64 creates an optional int64 value.
+func OptionalInt64(v int64) OptionalInt64Type {
+	return OptionalInt64Type{true, v}
+}
+
+// OptionalNetworkIdentifier creates an optional NetworkIdentifier value.
+func OptionalNetworkIdentifier(v NetworkIdentifier) OptionalNetworkIdentifierType {
+	return OptionalNetworkIdentifierType{true, v}
+}
+
+// OptionalOperator creates an optional Operator value.
+func OptionalOperator(v Operator) OptionalOperatorType {
+	return OptionalOperatorType{true, v}
+}
+
+// OptionalPartialBlockIdentifier creates an optional PartialBlockIdentifier value.
+func OptionalPartialBlockIdentifier(v PartialBlockIdentifier) OptionalPartialBlockIdentifierType {
+	return OptionalPartialBlockIdentifierType{true, v}
+}
+
+// OptionalSignatureType creates an optional SignatureType value.
+func OptionalSignatureType(v SignatureType) OptionalSignatureTypeType {
+	return OptionalSignatureTypeType{true, v}
+}
+
+// OptionalString creates an optional string value.
+func OptionalString(v string) OptionalStringType {
+	return OptionalStringType{true, v}
+}
+
+// OptionalSubAccountIdentifier creates an optional SubAccountIdentifier value.
+func OptionalSubAccountIdentifier(v SubAccountIdentifier) OptionalSubAccountIdentifierType {
+	return OptionalSubAccountIdentifierType{true, v}
+}
+
+// OptionalSubNetworkIdentifier creates an optional SubNetworkIdentifier value.
+func OptionalSubNetworkIdentifier(v SubNetworkIdentifier) OptionalSubNetworkIdentifierType {
+	return OptionalSubNetworkIdentifierType{true, v}
+}
+
+// OptionalSyncStatus creates an optional SyncStatus value.
+func OptionalSyncStatus(v SyncStatus) OptionalSyncStatusType {
+	return OptionalSyncStatusType{true, v}
+}
+
+// OptionalTransactionIdentifier creates an optional TransactionIdentifier value.
+func OptionalTransactionIdentifier(v TransactionIdentifier) OptionalTransactionIdentifierType {
+	return OptionalTransactionIdentifierType{true, v}
+}
+
 // AccountBalanceRequest type.
 //
 // An AccountBalanceRequest is utilized to make a balance request on the
 // /account/balance endpoint. If the block_identifier is populated, a historical
 // balance query should be performed.
 type AccountBalanceRequest struct {
-	AccountIdentifier  AccountIdentifier
-	BlockIdentifier    PartialBlockIdentifier
-	BlockIdentifierSet bool
+	AccountIdentifier AccountIdentifier
+	BlockIdentifier   OptionalPartialBlockIdentifierType
 	// In some cases, the caller may not want to retrieve all available balances
 	// for an AccountIdentifier. If the currencies field is populated, only
 	// balances for the specified currencies will be returned. If not populated,
 	// all available balances will be returned.
-	Currencies        []Currency
-	CurrenciesSet     bool
-	NetworkIdentifier NetworkIdentifier
+	Currencies []Currency
+}
+
+// EncodeJSON encodes AccountBalanceRequest into JSON.
+func (v AccountBalanceRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, '"', 'a', 'c', 'c', 'o', 'u', 'n', 't', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.AccountIdentifier.EncodeJSON(b)
+	b = append(b, ","...)
+	if v.BlockIdentifier.Set {
+		b = append(b, '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.BlockIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if len(v.Currencies) > 0 {
+		b = append(b, `"currencies":[`...)
+		for i, elem := range v.Currencies {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two AccountBalanceRequest values are equal.
 func (v AccountBalanceRequest) Equal(o AccountBalanceRequest) bool {
 	return v.AccountIdentifier.Equal(o.AccountIdentifier) &&
-		v.BlockIdentifierSet == o.BlockIdentifierSet && v.BlockIdentifier.Equal(o.BlockIdentifier) &&
-		v.CurrenciesSet == o.CurrenciesSet && CurrencySliceEqual(v.Currencies, o.Currencies) &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier)
+		v.BlockIdentifier.Value.Equal(o.BlockIdentifier.Value) &&
+		v.BlockIdentifier.Set == o.BlockIdentifier.Set &&
+		len(v.Currencies) == len(o.Currencies) &&
+		currencySliceEqual(v.Currencies, o.Currencies)
 }
 
 // Reset resets AccountBalanceRequest so that it can be reused.
 func (v *AccountBalanceRequest) Reset() {
 	v.AccountIdentifier.Reset()
-	v.BlockIdentifier.Reset()
-	v.BlockIdentifierSet = false
-	if len(v.Currencies) > 0 {
-		v.Currencies = v.Currencies[:0]
-	}
-	v.CurrenciesSet = false
-	v.NetworkIdentifier.Reset()
+	v.BlockIdentifier.Value.Reset()
+	v.BlockIdentifier.Set = false
+	v.Currencies = v.Currencies[:0]
 }
 
 // AccountBalanceResponse type.
@@ -125,27 +373,43 @@ type AccountBalanceResponse struct {
 	// Account-based blockchains that utilize a nonce or sequence number should
 	// include that number in the metadata. This number could be unique to the
 	// identifier or global across the account address.
-	Metadata    MapObject
-	MetadataSet bool
+	Metadata MapObject
+}
+
+// EncodeJSON encodes AccountBalanceResponse into JSON.
+func (v AccountBalanceResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"balances":[`...)
+	for i, elem := range v.Balances {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, ']', ',', '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.BlockIdentifier.EncodeJSON(b)
+	b = append(b, ","...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two AccountBalanceResponse values are equal.
 func (v AccountBalanceResponse) Equal(o AccountBalanceResponse) bool {
-	return AmountSliceEqual(v.Balances, o.Balances) &&
+	return len(v.Balances) == len(o.Balances) &&
+		amountSliceEqual(v.Balances, o.Balances) &&
 		v.BlockIdentifier.Equal(o.BlockIdentifier) &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata)
+		string(v.Metadata) == string(o.Metadata)
 }
 
 // Reset resets AccountBalanceResponse so that it can be reused.
 func (v *AccountBalanceResponse) Reset() {
-	if len(v.Balances) > 0 {
-		v.Balances = v.Balances[:0]
-	}
+	v.Balances = v.Balances[:0]
 	v.BlockIdentifier.Reset()
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 }
 
 // AccountCoinsRequest is utilized to make a request on the /account/coins
@@ -156,32 +420,47 @@ type AccountCoinsRequest struct {
 	// currencies for an AccountIdentifier. If the currencies field is
 	// populated, only coins for the specified currencies will be returned. If
 	// not populated, all unspent coins will be returned.
-	Currencies    []Currency
-	CurrenciesSet bool
+	Currencies []Currency
 	// Include state from the mempool when looking up an account's unspent
 	// coins. Note, using this functionality breaks any guarantee of
 	// idempotency.
-	IncludeMempool    bool
-	NetworkIdentifier NetworkIdentifier
+	IncludeMempool bool
+}
+
+// EncodeJSON encodes AccountCoinsRequest into JSON.
+func (v AccountCoinsRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, '"', 'a', 'c', 'c', 'o', 'u', 'n', 't', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.AccountIdentifier.EncodeJSON(b)
+	b = append(b, ","...)
+	if len(v.Currencies) > 0 {
+		b = append(b, `"currencies":[`...)
+		for i, elem := range v.Currencies {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b = append(b, '"', 'i', 'n', 'c', 'l', 'u', 'd', 'e', '_', 'm', 'e', 'm', 'p', 'o', 'o', 'l', '"', ':')
+	b = json.AppendBool(b, v.IncludeMempool)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two AccountCoinsRequest values are equal.
 func (v AccountCoinsRequest) Equal(o AccountCoinsRequest) bool {
 	return v.AccountIdentifier.Equal(o.AccountIdentifier) &&
-		v.CurrenciesSet == o.CurrenciesSet && CurrencySliceEqual(v.Currencies, o.Currencies) &&
-		v.IncludeMempool == o.IncludeMempool &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier)
+		len(v.Currencies) == len(o.Currencies) &&
+		currencySliceEqual(v.Currencies, o.Currencies) &&
+		v.IncludeMempool == o.IncludeMempool
 }
 
 // Reset resets AccountCoinsRequest so that it can be reused.
 func (v *AccountCoinsRequest) Reset() {
 	v.AccountIdentifier.Reset()
-	if len(v.Currencies) > 0 {
-		v.Currencies = v.Currencies[:0]
-	}
-	v.CurrenciesSet = false
+	v.Currencies = v.Currencies[:0]
 	v.IncludeMempool = false
-	v.NetworkIdentifier.Reset()
 }
 
 // AccountCoinsResponse is returned on the /account/coins endpoint and includes
@@ -197,27 +476,43 @@ type AccountCoinsResponse struct {
 	// Account-based blockchains that utilize a nonce or sequence number should
 	// include that number in the metadata. This number could be unique to the
 	// identifier or global across the account address.
-	Metadata    MapObject
-	MetadataSet bool
+	Metadata MapObject
+}
+
+// EncodeJSON encodes AccountCoinsResponse into JSON.
+func (v AccountCoinsResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.BlockIdentifier.EncodeJSON(b)
+	b = append(b, `,"coins":[`...)
+	for i, elem := range v.Coins {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, "],"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two AccountCoinsResponse values are equal.
 func (v AccountCoinsResponse) Equal(o AccountCoinsResponse) bool {
 	return v.BlockIdentifier.Equal(o.BlockIdentifier) &&
-		CoinSliceEqual(v.Coins, o.Coins) &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata)
+		len(v.Coins) == len(o.Coins) &&
+		coinSliceEqual(v.Coins, o.Coins) &&
+		string(v.Metadata) == string(o.Metadata)
 }
 
 // Reset resets AccountCoinsResponse so that it can be reused.
 func (v *AccountCoinsResponse) Reset() {
 	v.BlockIdentifier.Reset()
-	if len(v.Coins) > 0 {
-		v.Coins = v.Coins[:0]
-	}
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Coins = v.Coins[:0]
+	v.Metadata = v.Metadata[:0]
 }
 
 // AccountIdentifier type.
@@ -232,28 +527,43 @@ type AccountIdentifier struct {
 	// Blockchains that utilize a username model (where the address is not a
 	// derivative of a cryptographic public key) should specify the public
 	// key(s) owned by the address in metadata.
-	Metadata      MapObject
-	MetadataSet   bool
-	SubAccount    SubAccountIdentifier
-	SubAccountSet bool
+	Metadata   MapObject
+	SubAccount OptionalSubAccountIdentifierType
+}
+
+// EncodeJSON encodes AccountIdentifier into JSON.
+func (v AccountIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"address":`...)
+	b = json.AppendString(b, v.Address)
+	b = append(b, ","...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	if v.SubAccount.Set {
+		b = append(b, `"sub_account":`...)
+		b = v.SubAccount.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two AccountIdentifier values are equal.
 func (v AccountIdentifier) Equal(o AccountIdentifier) bool {
 	return v.Address == o.Address &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		v.SubAccountSet == o.SubAccountSet && v.SubAccount.Equal(o.SubAccount)
+		string(v.Metadata) == string(o.Metadata) &&
+		v.SubAccount.Value.Equal(o.SubAccount.Value) &&
+		v.SubAccount.Set == o.SubAccount.Set
 }
 
 // Reset resets AccountIdentifier so that it can be reused.
 func (v *AccountIdentifier) Reset() {
 	v.Address = ""
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	v.SubAccount.Reset()
-	v.SubAccountSet = false
+	v.Metadata = v.Metadata[:0]
+	v.SubAccount.Value.Reset()
+	v.SubAccount.Set = false
 }
 
 // Allow specifies supported Operation status, Operation types, and all possible
@@ -305,51 +615,96 @@ type Allow struct {
 	//
 	// If not populated, block timestamps are assumed to be valid for all
 	// available blocks.
-	TimestampStartIndex    int64
-	TimestampStartIndexSet bool
+	TimestampStartIndex OptionalInt64Type
+}
+
+// EncodeJSON encodes Allow into JSON.
+func (v Allow) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 'b', 'a', 'l', 'a', 'n', 'c', 'e', '_', 'e', 'x', 'e', 'm', 'p', 't', 'i', 'o', 'n', 's', '"', ':', '[')
+	for i, elem := range v.BalanceExemptions {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, ']', ',', '"', 'c', 'a', 'l', 'l', '_', 'm', 'e', 't', 'h', 'o', 'd', 's', '"', ':', '[')
+	for i, elem := range v.CallMethods {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = json.AppendString(b, elem)
+	}
+	b = append(b, `],"errors":[`...)
+	for i, elem := range v.Errors {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, ']', ',', '"', 'h', 'i', 's', 't', 'o', 'r', 'i', 'c', 'a', 'l', '_', 'b', 'a', 'l', 'a', 'n', 'c', 'e', '_', 'l', 'o', 'o', 'k', 'u', 'p', '"', ':')
+	b = json.AppendBool(b, v.HistoricalBalanceLookup)
+	b = append(b, ',', '"', 'm', 'e', 'm', 'p', 'o', 'o', 'l', '_', 'c', 'o', 'i', 'n', 's', '"', ':')
+	b = json.AppendBool(b, v.MempoolCoins)
+	b = append(b, ',', '"', 'o', 'p', 'e', 'r', 'a', 't', 'i', 'o', 'n', '_', 's', 't', 'a', 't', 'u', 's', 'e', 's', '"', ':', '[')
+	for i, elem := range v.OperationStatuses {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, ']', ',', '"', 'o', 'p', 'e', 'r', 'a', 't', 'i', 'o', 'n', '_', 't', 'y', 'p', 'e', 's', '"', ':', '[')
+	for i, elem := range v.OperationTypes {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = json.AppendString(b, elem)
+	}
+	b = append(b, "],"...)
+	if v.TimestampStartIndex.Set {
+		b = append(b, '"', 't', 'i', 'm', 'e', 's', 't', 'a', 'm', 'p', '_', 's', 't', 'a', 'r', 't', '_', 'i', 'n', 'd', 'e', 'x', '"', ':')
+		b = json.AppendInt(b, v.TimestampStartIndex.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two Allow values are equal.
 func (v Allow) Equal(o Allow) bool {
-	return BalanceExemptionSliceEqual(v.BalanceExemptions, o.BalanceExemptions) &&
-		StringSliceEqual(v.CallMethods, o.CallMethods) &&
-		ErrorSliceEqual(v.Errors, o.Errors) &&
+	return len(v.BalanceExemptions) == len(o.BalanceExemptions) &&
+		balanceExemptionSliceEqual(v.BalanceExemptions, o.BalanceExemptions) &&
+		len(v.CallMethods) == len(o.CallMethods) &&
+		stringSliceEqual(v.CallMethods, o.CallMethods) &&
+		len(v.Errors) == len(o.Errors) &&
+		errorSliceEqual(v.Errors, o.Errors) &&
 		v.HistoricalBalanceLookup == o.HistoricalBalanceLookup &&
 		v.MempoolCoins == o.MempoolCoins &&
-		OperationStatusSliceEqual(v.OperationStatuses, o.OperationStatuses) &&
-		StringSliceEqual(v.OperationTypes, o.OperationTypes) &&
-		v.TimestampStartIndexSet == o.TimestampStartIndexSet && v.TimestampStartIndex == o.TimestampStartIndex
+		len(v.OperationStatuses) == len(o.OperationStatuses) &&
+		operationStatusSliceEqual(v.OperationStatuses, o.OperationStatuses) &&
+		len(v.OperationTypes) == len(o.OperationTypes) &&
+		stringSliceEqual(v.OperationTypes, o.OperationTypes) &&
+		v.TimestampStartIndex.Value == o.TimestampStartIndex.Value &&
+		v.TimestampStartIndex.Set == o.TimestampStartIndex.Set
 }
 
 // Reset resets Allow so that it can be reused.
 func (v *Allow) Reset() {
-	if len(v.BalanceExemptions) > 0 {
-		v.BalanceExemptions = v.BalanceExemptions[:0]
-	}
-	if len(v.CallMethods) > 0 {
-		v.CallMethods = v.CallMethods[:0]
-	}
-	if len(v.Errors) > 0 {
-		v.Errors = v.Errors[:0]
-	}
+	v.BalanceExemptions = v.BalanceExemptions[:0]
+	v.CallMethods = v.CallMethods[:0]
+	v.Errors = v.Errors[:0]
 	v.HistoricalBalanceLookup = false
 	v.MempoolCoins = false
-	if len(v.OperationStatuses) > 0 {
-		v.OperationStatuses = v.OperationStatuses[:0]
-	}
-	if len(v.OperationTypes) > 0 {
-		v.OperationTypes = v.OperationTypes[:0]
-	}
-	v.TimestampStartIndex = 0
-	v.TimestampStartIndexSet = false
+	v.OperationStatuses = v.OperationStatuses[:0]
+	v.OperationTypes = v.OperationTypes[:0]
+	v.TimestampStartIndex.Value = 0
+	v.TimestampStartIndex.Set = false
 }
 
 // Amount is some Value of a Currency. It is considered invalid to specify a
 // Value without a Currency.
 type Amount struct {
-	Currency    Currency
-	Metadata    MapObject
-	MetadataSet bool
+	Currency Currency
+	Metadata MapObject
 	// Value of the transaction in atomic units represented as an
 	// arbitrary-sized signed integer.
 	//
@@ -357,20 +712,32 @@ type Amount struct {
 	Value string
 }
 
+// EncodeJSON encodes Amount into JSON.
+func (v Amount) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"currency":`...)
+	b = v.Currency.EncodeJSON(b)
+	b = append(b, ","...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"value":`...)
+	b = json.AppendString(b, v.Value)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two Amount values are equal.
 func (v Amount) Equal(o Amount) bool {
 	return v.Currency.Equal(o.Currency) &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+		string(v.Metadata) == string(o.Metadata) &&
 		v.Value == o.Value
 }
 
 // Reset resets Amount so that it can be reused.
 func (v *Amount) Reset() {
 	v.Currency.Reset()
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 	v.Value = ""
 }
 
@@ -391,32 +758,54 @@ func (v *Amount) Reset() {
 // historical balance lookup (the ability to query an account balance at any
 // BlockIdentifier).
 type BalanceExemption struct {
-	Currency         Currency
-	CurrencySet      bool
-	ExemptionType    ExemptionType
-	ExemptionTypeSet bool
+	Currency      OptionalCurrencyType
+	ExemptionType OptionalExemptionTypeType
 	// SubAccountAddress is the SubAccountIdentifier.Address that the
 	// BalanceExemption applies to (regardless of the value of
 	// SubAccountIdentifier.Metadata).
-	SubAccountAddress    string
-	SubAccountAddressSet bool
+	SubAccountAddress OptionalStringType
+}
+
+// EncodeJSON encodes BalanceExemption into JSON.
+func (v BalanceExemption) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.Currency.Set {
+		b = append(b, `"currency":`...)
+		b = v.Currency.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.ExemptionType.Set {
+		b = append(b, '"', 'e', 'x', 'e', 'm', 'p', 't', 'i', 'o', 'n', '_', 't', 'y', 'p', 'e', '"', ':')
+		b = json.AppendString(b, string(v.ExemptionType.Value))
+		b = append(b, ","...)
+	}
+	if v.SubAccountAddress.Set {
+		b = append(b, '"', 's', 'u', 'b', '_', 'a', 'c', 'c', 'o', 'u', 'n', 't', '_', 'a', 'd', 'd', 'r', 'e', 's', 's', '"', ':')
+		b = json.AppendString(b, v.SubAccountAddress.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two BalanceExemption values are equal.
 func (v BalanceExemption) Equal(o BalanceExemption) bool {
-	return v.CurrencySet == o.CurrencySet && v.Currency.Equal(o.Currency) &&
-		v.ExemptionTypeSet == o.ExemptionTypeSet && v.ExemptionType == o.ExemptionType &&
-		v.SubAccountAddressSet == o.SubAccountAddressSet && v.SubAccountAddress == o.SubAccountAddress
+	return v.Currency.Value.Equal(o.Currency.Value) &&
+		v.Currency.Set == o.Currency.Set &&
+		v.ExemptionType.Value == o.ExemptionType.Value &&
+		v.ExemptionType.Set == o.ExemptionType.Set &&
+		v.SubAccountAddress.Value == o.SubAccountAddress.Value &&
+		v.SubAccountAddress.Set == o.SubAccountAddress.Set
 }
 
 // Reset resets BalanceExemption so that it can be reused.
 func (v *BalanceExemption) Reset() {
-	v.Currency.Reset()
-	v.CurrencySet = false
-	v.ExemptionType = ""
-	v.ExemptionTypeSet = false
-	v.SubAccountAddress = ""
-	v.SubAccountAddressSet = false
+	v.Currency.Value.Reset()
+	v.Currency.Set = false
+	v.ExemptionType.Value = ""
+	v.ExemptionType.Set = false
+	v.SubAccountAddress.Value = ""
+	v.SubAccountAddress.Set = false
 }
 
 // Block type.
@@ -431,33 +820,52 @@ func (v *BalanceExemption) Reset() {
 type Block struct {
 	BlockIdentifier       BlockIdentifier
 	Metadata              MapObject
-	MetadataSet           bool
 	ParentBlockIdentifier BlockIdentifier
 	Timestamp             Timestamp
 	Transactions          []Transaction
 }
 
+// EncodeJSON encodes Block into JSON.
+func (v Block) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.BlockIdentifier.EncodeJSON(b)
+	b = append(b, ","...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, '"', 'p', 'a', 'r', 'e', 'n', 't', '_', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.ParentBlockIdentifier.EncodeJSON(b)
+	b = append(b, `,"timestamp":`...)
+	b = json.AppendInt(b, int64(v.Timestamp))
+	b = append(b, ',', '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', 's', '"', ':', '[')
+	for i, elem := range v.Transactions {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	return append(b, "]}"...)
+}
+
 // Equal returns whether two Block values are equal.
 func (v Block) Equal(o Block) bool {
 	return v.BlockIdentifier.Equal(o.BlockIdentifier) &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+		string(v.Metadata) == string(o.Metadata) &&
 		v.ParentBlockIdentifier.Equal(o.ParentBlockIdentifier) &&
 		v.Timestamp == o.Timestamp &&
-		TransactionSliceEqual(v.Transactions, o.Transactions)
+		len(v.Transactions) == len(o.Transactions) &&
+		transactionSliceEqual(v.Transactions, o.Transactions)
 }
 
 // Reset resets Block so that it can be reused.
 func (v *Block) Reset() {
 	v.BlockIdentifier.Reset()
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 	v.ParentBlockIdentifier.Reset()
 	v.Timestamp = 0
-	if len(v.Transactions) > 0 {
-		v.Transactions = v.Transactions[:0]
-	}
+	v.Transactions = v.Transactions[:0]
 }
 
 // BlockEvent represents the addition or removal of a BlockIdentifier from
@@ -469,6 +877,17 @@ type BlockEvent struct {
 	// NetworkIdentifier.
 	Sequence int64
 	Type     BlockEventType
+}
+
+// EncodeJSON encodes BlockEvent into JSON.
+func (v BlockEvent) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.BlockIdentifier.EncodeJSON(b)
+	b = append(b, `,"sequence":`...)
+	b = json.AppendInt(b, v.Sequence)
+	b = append(b, `,"type":`...)
+	b = json.AppendString(b, string(v.Type))
+	return append(b, "}"...)
 }
 
 // Equal returns whether two BlockEvent values are equal.
@@ -506,6 +925,15 @@ type BlockIdentifier struct {
 	Index int64
 }
 
+// EncodeJSON encodes BlockIdentifier into JSON.
+func (v BlockIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"hash":`...)
+	b = json.AppendString(b, v.Hash)
+	b = append(b, `,"index":`...)
+	b = json.AppendInt(b, v.Index)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two BlockIdentifier values are equal.
 func (v BlockIdentifier) Equal(o BlockIdentifier) bool {
 	return v.Hash == o.Hash &&
@@ -522,20 +950,25 @@ func (v *BlockIdentifier) Reset() {
 //
 // A BlockRequest is utilized to make a block request on the /block endpoint.
 type BlockRequest struct {
-	BlockIdentifier   PartialBlockIdentifier
-	NetworkIdentifier NetworkIdentifier
+	BlockIdentifier PartialBlockIdentifier
+}
+
+// EncodeJSON encodes BlockRequest into JSON.
+func (v BlockRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.BlockIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two BlockRequest values are equal.
 func (v BlockRequest) Equal(o BlockRequest) bool {
-	return v.BlockIdentifier.Equal(o.BlockIdentifier) &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier)
+	return v.BlockIdentifier.Equal(o.BlockIdentifier)
 }
 
 // Reset resets BlockRequest so that it can be reused.
 func (v *BlockRequest) Reset() {
 	v.BlockIdentifier.Reset()
-	v.NetworkIdentifier.Reset()
 }
 
 // BlockResponse type.
@@ -553,31 +986,50 @@ func (v *BlockRequest) Reset() {
 // words, the `PartialBlockIdentifier` of a block after an omitted block should
 // reference the last non-omitted block.
 type BlockResponse struct {
-	Block    Block
-	BlockSet bool
+	Block OptionalBlockType
 	// Some blockchains may require additional transactions to be fetched that
 	// weren't returned in the block response (ex: block only returns
 	// transaction hashes). For blockchains with a lot of transactions in each
 	// block, this can be very useful as consumers can concurrently fetch all
 	// transactions returned.
-	OtherTransactions    []TransactionIdentifier
-	OtherTransactionsSet bool
+	OtherTransactions []TransactionIdentifier
+}
+
+// EncodeJSON encodes BlockResponse into JSON.
+func (v BlockResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.Block.Set {
+		b = append(b, `"block":`...)
+		b = v.Block.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if len(v.OtherTransactions) > 0 {
+		b = append(b, '"', 'o', 't', 'h', 'e', 'r', '_', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', 's', '"', ':', '[')
+		for i, elem := range v.OtherTransactions {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two BlockResponse values are equal.
 func (v BlockResponse) Equal(o BlockResponse) bool {
-	return v.BlockSet == o.BlockSet && v.Block.Equal(o.Block) &&
-		v.OtherTransactionsSet == o.OtherTransactionsSet && TransactionIdentifierSliceEqual(v.OtherTransactions, o.OtherTransactions)
+	return v.Block.Value.Equal(o.Block.Value) &&
+		v.Block.Set == o.Block.Set &&
+		len(v.OtherTransactions) == len(o.OtherTransactions) &&
+		transactionIdentifierSliceEqual(v.OtherTransactions, o.OtherTransactions)
 }
 
 // Reset resets BlockResponse so that it can be reused.
 func (v *BlockResponse) Reset() {
-	v.Block.Reset()
-	v.BlockSet = false
-	if len(v.OtherTransactions) > 0 {
-		v.OtherTransactions = v.OtherTransactions[:0]
-	}
-	v.OtherTransactionsSet = false
+	v.Block.Value.Reset()
+	v.Block.Set = false
+	v.OtherTransactions = v.OtherTransactions[:0]
 }
 
 // BlockTransaction contains a populated Transaction and the BlockIdentifier
@@ -585,6 +1037,15 @@ func (v *BlockResponse) Reset() {
 type BlockTransaction struct {
 	BlockIdentifier BlockIdentifier
 	Transaction     Transaction
+}
+
+// EncodeJSON encodes BlockTransaction into JSON.
+func (v BlockTransaction) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.BlockIdentifier.EncodeJSON(b)
+	b = append(b, `,"transaction":`...)
+	b = v.Transaction.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two BlockTransaction values are equal.
@@ -605,21 +1066,28 @@ func (v *BlockTransaction) Reset() {
 // that is not returned in a BlockResponse.
 type BlockTransactionRequest struct {
 	BlockIdentifier       BlockIdentifier
-	NetworkIdentifier     NetworkIdentifier
 	TransactionIdentifier TransactionIdentifier
+}
+
+// EncodeJSON encodes BlockTransactionRequest into JSON.
+func (v BlockTransactionRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, '"', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.BlockIdentifier.EncodeJSON(b)
+	b = append(b, ',', '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.TransactionIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two BlockTransactionRequest values are equal.
 func (v BlockTransactionRequest) Equal(o BlockTransactionRequest) bool {
 	return v.BlockIdentifier.Equal(o.BlockIdentifier) &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
 		v.TransactionIdentifier.Equal(o.TransactionIdentifier)
 }
 
 // Reset resets BlockTransactionRequest so that it can be reused.
 func (v *BlockTransactionRequest) Reset() {
 	v.BlockIdentifier.Reset()
-	v.NetworkIdentifier.Reset()
 	v.TransactionIdentifier.Reset()
 }
 
@@ -628,6 +1096,13 @@ func (v *BlockTransactionRequest) Reset() {
 // A BlockTransactionResponse contains information about a block transaction.
 type BlockTransactionResponse struct {
 	Transaction Transaction
+}
+
+// EncodeJSON encodes BlockTransactionResponse into JSON.
+func (v BlockTransactionResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"transaction":`...)
+	b = v.Transaction.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two BlockTransactionResponse values are equal.
@@ -649,28 +1124,33 @@ type CallRequest struct {
 	// The implementation must define all available methods in the Allow object.
 	// However, it is up to the caller to determine which parameters to provide
 	// when invoking `/call`.
-	Method            string
-	NetworkIdentifier NetworkIdentifier
+	Method string
 	// Parameters is some network-specific argument for a method. It is up to
 	// the caller to determine which parameters to provide when invoking
 	// `/call`.
 	Parameters MapObject
 }
 
+// EncodeJSON encodes CallRequest into JSON.
+func (v CallRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, `"method":`...)
+	b = json.AppendString(b, v.Method)
+	b = append(b, `,"parameters":`...)
+	b = appendMapObject(b, v.Parameters)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two CallRequest values are equal.
 func (v CallRequest) Equal(o CallRequest) bool {
 	return v.Method == o.Method &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		MapObjectEqual(v.Parameters, o.Parameters)
+		string(v.Parameters) == string(o.Parameters)
 }
 
 // Reset resets CallRequest so that it can be reused.
 func (v *CallRequest) Reset() {
 	v.Method = ""
-	v.NetworkIdentifier.Reset()
-	if len(v.Parameters) > 0 {
-		v.Parameters = v.Parameters[:0]
-	}
+	v.Parameters = v.Parameters[:0]
 }
 
 // CallResponse contains the result of a `/call` invocation.
@@ -689,24 +1169,40 @@ type CallResponse struct {
 	Result MapObject
 }
 
+// EncodeJSON encodes CallResponse into JSON.
+func (v CallResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"idempotent":`...)
+	b = json.AppendBool(b, v.Idempotent)
+	b = append(b, `,"result":`...)
+	b = appendMapObject(b, v.Result)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two CallResponse values are equal.
 func (v CallResponse) Equal(o CallResponse) bool {
 	return v.Idempotent == o.Idempotent &&
-		MapObjectEqual(v.Result, o.Result)
+		string(v.Result) == string(o.Result)
 }
 
 // Reset resets CallResponse so that it can be reused.
 func (v *CallResponse) Reset() {
 	v.Idempotent = false
-	if len(v.Result) > 0 {
-		v.Result = v.Result[:0]
-	}
+	v.Result = v.Result[:0]
 }
 
 // Coin contains its unique identifier and the amount it represents.
 type Coin struct {
 	Amount         Amount
 	CoinIdentifier CoinIdentifier
+}
+
+// EncodeJSON encodes Coin into JSON.
+func (v Coin) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"amount":`...)
+	b = v.Amount.EncodeJSON(b)
+	b = append(b, ',', '"', 'c', 'o', 'i', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.CoinIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two Coin values are equal.
@@ -748,6 +1244,15 @@ type CoinChange struct {
 	CoinIdentifier CoinIdentifier
 }
 
+// EncodeJSON encodes CoinChange into JSON.
+func (v CoinChange) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"coin_action":`...)
+	b = json.AppendString(b, string(v.CoinAction))
+	b = append(b, ',', '"', 'c', 'o', 'i', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.CoinIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two CoinChange values are equal.
 func (v CoinChange) Equal(o CoinChange) bool {
 	return v.CoinAction == o.CoinAction &&
@@ -767,6 +1272,13 @@ type CoinIdentifier struct {
 	Identifier string
 }
 
+// EncodeJSON encodes CoinIdentifier into JSON.
+func (v CoinIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"identifier":`...)
+	b = json.AppendString(b, v.Identifier)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two CoinIdentifier values are equal.
 func (v CoinIdentifier) Equal(o CoinIdentifier) bool {
 	return v.Identifier == o.Identifier
@@ -782,24 +1294,35 @@ func (v *CoinIdentifier) Reset() {
 // `/construction/payloads` and all required signatures to create a network
 // transaction.
 type ConstructionCombineRequest struct {
-	NetworkIdentifier   NetworkIdentifier
 	Signatures          []Signature
 	UnsignedTransaction string
 }
 
+// EncodeJSON encodes ConstructionCombineRequest into JSON.
+func (v ConstructionCombineRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, `"signatures":[`...)
+	for i, elem := range v.Signatures {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, ']', ',', '"', 'u', 'n', 's', 'i', 'g', 'n', 'e', 'd', '_', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '"', ':')
+	b = json.AppendString(b, v.UnsignedTransaction)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two ConstructionCombineRequest values are equal.
 func (v ConstructionCombineRequest) Equal(o ConstructionCombineRequest) bool {
-	return v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		SignatureSliceEqual(v.Signatures, o.Signatures) &&
+	return len(v.Signatures) == len(o.Signatures) &&
+		signatureSliceEqual(v.Signatures, o.Signatures) &&
 		v.UnsignedTransaction == o.UnsignedTransaction
 }
 
 // Reset resets ConstructionCombineRequest so that it can be reused.
 func (v *ConstructionCombineRequest) Reset() {
-	v.NetworkIdentifier.Reset()
-	if len(v.Signatures) > 0 {
-		v.Signatures = v.Signatures[:0]
-	}
+	v.Signatures = v.Signatures[:0]
 	v.UnsignedTransaction = ""
 }
 
@@ -807,6 +1330,13 @@ func (v *ConstructionCombineRequest) Reset() {
 // network payload will be sent directly to the `construction/submit` endpoint.
 type ConstructionCombineResponse struct {
 	SignedTransaction string
+}
+
+// EncodeJSON encodes ConstructionCombineResponse into JSON.
+func (v ConstructionCombineResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 's', 'i', 'g', 'n', 'e', 'd', '_', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '"', ':')
+	b = json.AppendString(b, v.SignedTransaction)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two ConstructionCombineResponse values are equal.
@@ -825,76 +1355,105 @@ func (v *ConstructionCombineResponse) Reset() {
 // because some blockchains allow for multiple address types (i.e. different
 // address for validators vs normal accounts).
 type ConstructionDeriveRequest struct {
-	Metadata          MapObject
-	MetadataSet       bool
-	NetworkIdentifier NetworkIdentifier
-	PublicKey         PublicKey
+	Metadata  MapObject
+	PublicKey PublicKey
+}
+
+// EncodeJSON encodes ConstructionDeriveRequest into JSON.
+func (v ConstructionDeriveRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"public_key":`...)
+	b = v.PublicKey.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two ConstructionDeriveRequest values are equal.
 func (v ConstructionDeriveRequest) Equal(o ConstructionDeriveRequest) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
+	return string(v.Metadata) == string(o.Metadata) &&
 		v.PublicKey.Equal(o.PublicKey)
 }
 
 // Reset resets ConstructionDeriveRequest so that it can be reused.
 func (v *ConstructionDeriveRequest) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	v.NetworkIdentifier.Reset()
+	v.Metadata = v.Metadata[:0]
 	v.PublicKey.Reset()
 }
 
 // ConstructionDeriveResponse is returned by the `/construction/derive`
 // endpoint.
 type ConstructionDeriveResponse struct {
-	AccountIdentifier    AccountIdentifier
-	AccountIdentifierSet bool
+	AccountIdentifier OptionalAccountIdentifierType
 	// [DEPRECATED by `account_identifier` in `v1.4.4`] Address in
 	// network-specific format.
-	Address     string
-	AddressSet  bool
-	Metadata    MapObject
-	MetadataSet bool
+	Address  OptionalStringType
+	Metadata MapObject
+}
+
+// EncodeJSON encodes ConstructionDeriveResponse into JSON.
+func (v ConstructionDeriveResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.AccountIdentifier.Set {
+		b = append(b, '"', 'a', 'c', 'c', 'o', 'u', 'n', 't', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.AccountIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.Address.Set {
+		b = append(b, `"address":`...)
+		b = json.AppendString(b, v.Address.Value)
+		b = append(b, ","...)
+	}
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two ConstructionDeriveResponse values are equal.
 func (v ConstructionDeriveResponse) Equal(o ConstructionDeriveResponse) bool {
-	return v.AccountIdentifierSet == o.AccountIdentifierSet && v.AccountIdentifier.Equal(o.AccountIdentifier) &&
-		v.AddressSet == o.AddressSet && v.Address == o.Address &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata)
+	return v.AccountIdentifier.Value.Equal(o.AccountIdentifier.Value) &&
+		v.AccountIdentifier.Set == o.AccountIdentifier.Set &&
+		v.Address.Value == o.Address.Value &&
+		v.Address.Set == o.Address.Set &&
+		string(v.Metadata) == string(o.Metadata)
 }
 
 // Reset resets ConstructionDeriveResponse so that it can be reused.
 func (v *ConstructionDeriveResponse) Reset() {
-	v.AccountIdentifier.Reset()
-	v.AccountIdentifierSet = false
-	v.Address = ""
-	v.AddressSet = false
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.AccountIdentifier.Value.Reset()
+	v.AccountIdentifier.Set = false
+	v.Address.Value = ""
+	v.Address.Set = false
+	v.Metadata = v.Metadata[:0]
 }
 
 // ConstructionHashRequest is the input to the `/construction/hash` endpoint.
 type ConstructionHashRequest struct {
-	NetworkIdentifier NetworkIdentifier
 	SignedTransaction string
+}
+
+// EncodeJSON encodes ConstructionHashRequest into JSON.
+func (v ConstructionHashRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, '"', 's', 'i', 'g', 'n', 'e', 'd', '_', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '"', ':')
+	b = json.AppendString(b, v.SignedTransaction)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two ConstructionHashRequest values are equal.
 func (v ConstructionHashRequest) Equal(o ConstructionHashRequest) bool {
-	return v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		v.SignedTransaction == o.SignedTransaction
+	return v.SignedTransaction == o.SignedTransaction
 }
 
 // Reset resets ConstructionHashRequest so that it can be reused.
 func (v *ConstructionHashRequest) Reset() {
-	v.NetworkIdentifier.Reset()
 	v.SignedTransaction = ""
 }
 
@@ -910,37 +1469,49 @@ func (v *ConstructionHashRequest) Reset() {
 // Optionally, the request can also include an array of PublicKeys associated
 // with the AccountIdentifiers returned in ConstructionPreprocessResponse.
 type ConstructionMetadataRequest struct {
-	NetworkIdentifier NetworkIdentifier
 	// Some blockchains require different metadata for different types of
 	// transaction construction (ex: delegation versus a transfer). Instead of
 	// requiring a blockchain node to return all possible types of metadata for
 	// construction (which may require multiple node fetches), the client can
 	// populate an options object to limit the metadata returned to only the
 	// subset required.
-	Options       MapObject
-	OptionsSet    bool
-	PublicKeys    []PublicKey
-	PublicKeysSet bool
+	Options    MapObject
+	PublicKeys []PublicKey
+}
+
+// EncodeJSON encodes ConstructionMetadataRequest into JSON.
+func (v ConstructionMetadataRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	if len(v.Options) > 0 {
+		b = append(b, `"options":`...)
+		b = append(b, v.Options...)
+		b = append(b, ","...)
+	}
+	if len(v.PublicKeys) > 0 {
+		b = append(b, `"public_keys":[`...)
+		for i, elem := range v.PublicKeys {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two ConstructionMetadataRequest values are equal.
 func (v ConstructionMetadataRequest) Equal(o ConstructionMetadataRequest) bool {
-	return v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		v.OptionsSet == o.OptionsSet && MapObjectEqual(v.Options, o.Options) &&
-		v.PublicKeysSet == o.PublicKeysSet && PublicKeySliceEqual(v.PublicKeys, o.PublicKeys)
+	return string(v.Options) == string(o.Options) &&
+		len(v.PublicKeys) == len(o.PublicKeys) &&
+		publicKeySliceEqual(v.PublicKeys, o.PublicKeys)
 }
 
 // Reset resets ConstructionMetadataRequest so that it can be reused.
 func (v *ConstructionMetadataRequest) Reset() {
-	v.NetworkIdentifier.Reset()
-	if len(v.Options) > 0 {
-		v.Options = v.Options[:0]
-	}
-	v.OptionsSet = false
-	if len(v.PublicKeys) > 0 {
-		v.PublicKeys = v.PublicKeys[:0]
-	}
-	v.PublicKeysSet = false
+	v.Options = v.Options[:0]
+	v.PublicKeys = v.PublicKeys[:0]
 }
 
 // ConstructionMetadataResponse type.
@@ -954,32 +1525,45 @@ func (v *ConstructionMetadataRequest) Reset() {
 // that can pay the suggested fee. Suggested fee is an array in case fee payment
 // must occur in multiple currencies.
 type ConstructionMetadataResponse struct {
-	Metadata        MapObject
-	SuggestedFee    []Amount
-	SuggestedFeeSet bool
+	Metadata     MapObject
+	SuggestedFee []Amount
+}
+
+// EncodeJSON encodes ConstructionMetadataResponse into JSON.
+func (v ConstructionMetadataResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"metadata":`...)
+	b = appendMapObject(b, v.Metadata)
+	b = append(b, ","...)
+	if len(v.SuggestedFee) > 0 {
+		b = append(b, '"', 's', 'u', 'g', 'g', 'e', 's', 't', 'e', 'd', '_', 'f', 'e', 'e', '"', ':', '[')
+		for i, elem := range v.SuggestedFee {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two ConstructionMetadataResponse values are equal.
 func (v ConstructionMetadataResponse) Equal(o ConstructionMetadataResponse) bool {
-	return MapObjectEqual(v.Metadata, o.Metadata) &&
-		v.SuggestedFeeSet == o.SuggestedFeeSet && AmountSliceEqual(v.SuggestedFee, o.SuggestedFee)
+	return string(v.Metadata) == string(o.Metadata) &&
+		len(v.SuggestedFee) == len(o.SuggestedFee) &&
+		amountSliceEqual(v.SuggestedFee, o.SuggestedFee)
 }
 
 // Reset resets ConstructionMetadataResponse so that it can be reused.
 func (v *ConstructionMetadataResponse) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	if len(v.SuggestedFee) > 0 {
-		v.SuggestedFee = v.SuggestedFee[:0]
-	}
-	v.SuggestedFeeSet = false
+	v.Metadata = v.Metadata[:0]
+	v.SuggestedFee = v.SuggestedFee[:0]
 }
 
 // ConstructionParseRequest is the input to the `/construction/parse` endpoint.
 // It allows the caller to parse either an unsigned or signed transaction.
 type ConstructionParseRequest struct {
-	NetworkIdentifier NetworkIdentifier
 	// Signed is a boolean indicating whether the transaction is signed.
 	Signed bool
 	// This must be either the unsigned transaction blob returned by
@@ -988,16 +1572,24 @@ type ConstructionParseRequest struct {
 	Transaction string
 }
 
+// EncodeJSON encodes ConstructionParseRequest into JSON.
+func (v ConstructionParseRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, `"signed":`...)
+	b = json.AppendBool(b, v.Signed)
+	b = append(b, `,"transaction":`...)
+	b = json.AppendString(b, v.Transaction)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two ConstructionParseRequest values are equal.
 func (v ConstructionParseRequest) Equal(o ConstructionParseRequest) bool {
-	return v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		v.Signed == o.Signed &&
+	return v.Signed == o.Signed &&
 		v.Transaction == o.Transaction
 }
 
 // Reset resets ConstructionParseRequest so that it can be reused.
 func (v *ConstructionParseRequest) Reset() {
-	v.NetworkIdentifier.Reset()
 	v.Signed = false
 	v.Transaction = ""
 }
@@ -1006,43 +1598,72 @@ func (v *ConstructionParseRequest) Reset() {
 // transaction blob. This should match the array of operations provided to
 // `/construction/preprocess` and `/construction/payloads`.
 type ConstructionParseResponse struct {
-	AccountIdentifierSigners    []AccountIdentifier
-	AccountIdentifierSignersSet bool
-	Metadata                    MapObject
-	MetadataSet                 bool
-	Operations                  []Operation
+	AccountIdentifierSigners []AccountIdentifier
+	Metadata                 MapObject
+	Operations               []Operation
 	// [DEPRECATED by `account_identifier_signers` in `v1.4.4`] All signers
 	// (addresses) of a particular transaction. If the transaction is unsigned,
 	// it should be empty.
-	Signers    []string
-	SignersSet bool
+	Signers []string
+}
+
+// EncodeJSON encodes ConstructionParseResponse into JSON.
+func (v ConstructionParseResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.AccountIdentifierSigners) > 0 {
+		b = append(b, '"', 'a', 'c', 'c', 'o', 'u', 'n', 't', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '_', 's', 'i', 'g', 'n', 'e', 'r', 's', '"', ':', '[')
+		for i, elem := range v.AccountIdentifierSigners {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"operations":[`...)
+	for i, elem := range v.Operations {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, "],"...)
+	if len(v.Signers) > 0 {
+		b = append(b, `"signers":[`...)
+		for i, elem := range v.Signers {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = json.AppendString(b, elem)
+		}
+		b = append(b, "],"...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two ConstructionParseResponse values are equal.
 func (v ConstructionParseResponse) Equal(o ConstructionParseResponse) bool {
-	return v.AccountIdentifierSignersSet == o.AccountIdentifierSignersSet && AccountIdentifierSliceEqual(v.AccountIdentifierSigners, o.AccountIdentifierSigners) &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		OperationSliceEqual(v.Operations, o.Operations) &&
-		v.SignersSet == o.SignersSet && StringSliceEqual(v.Signers, o.Signers)
+	return len(v.AccountIdentifierSigners) == len(o.AccountIdentifierSigners) &&
+		accountIdentifierSliceEqual(v.AccountIdentifierSigners, o.AccountIdentifierSigners) &&
+		string(v.Metadata) == string(o.Metadata) &&
+		len(v.Operations) == len(o.Operations) &&
+		operationSliceEqual(v.Operations, o.Operations) &&
+		len(v.Signers) == len(o.Signers) &&
+		stringSliceEqual(v.Signers, o.Signers)
 }
 
 // Reset resets ConstructionParseResponse so that it can be reused.
 func (v *ConstructionParseResponse) Reset() {
-	if len(v.AccountIdentifierSigners) > 0 {
-		v.AccountIdentifierSigners = v.AccountIdentifierSigners[:0]
-	}
-	v.AccountIdentifierSignersSet = false
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	if len(v.Operations) > 0 {
-		v.Operations = v.Operations[:0]
-	}
-	if len(v.Signers) > 0 {
-		v.Signers = v.Signers[:0]
-	}
-	v.SignersSet = false
+	v.AccountIdentifierSigners = v.AccountIdentifierSigners[:0]
+	v.Metadata = v.Metadata[:0]
+	v.Operations = v.Operations[:0]
+	v.Signers = v.Signers[:0]
 }
 
 // ConstructionPayloadsRequest is the request to `/construction/payloads`. It
@@ -1052,36 +1673,55 @@ func (v *ConstructionParseResponse) Reset() {
 // Optionally, the request can also include an array of PublicKeys associated
 // with the AccountIdentifiers returned in ConstructionPreprocessResponse.
 type ConstructionPayloadsRequest struct {
-	Metadata          MapObject
-	MetadataSet       bool
-	NetworkIdentifier NetworkIdentifier
-	Operations        []Operation
-	PublicKeys        []PublicKey
-	PublicKeysSet     bool
+	Metadata   MapObject
+	Operations []Operation
+	PublicKeys []PublicKey
+}
+
+// EncodeJSON encodes ConstructionPayloadsRequest into JSON.
+func (v ConstructionPayloadsRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"operations":[`...)
+	for i, elem := range v.Operations {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, "],"...)
+	if len(v.PublicKeys) > 0 {
+		b = append(b, `"public_keys":[`...)
+		for i, elem := range v.PublicKeys {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two ConstructionPayloadsRequest values are equal.
 func (v ConstructionPayloadsRequest) Equal(o ConstructionPayloadsRequest) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		OperationSliceEqual(v.Operations, o.Operations) &&
-		v.PublicKeysSet == o.PublicKeysSet && PublicKeySliceEqual(v.PublicKeys, o.PublicKeys)
+	return string(v.Metadata) == string(o.Metadata) &&
+		len(v.Operations) == len(o.Operations) &&
+		operationSliceEqual(v.Operations, o.Operations) &&
+		len(v.PublicKeys) == len(o.PublicKeys) &&
+		publicKeySliceEqual(v.PublicKeys, o.PublicKeys)
 }
 
 // Reset resets ConstructionPayloadsRequest so that it can be reused.
 func (v *ConstructionPayloadsRequest) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	v.NetworkIdentifier.Reset()
-	if len(v.Operations) > 0 {
-		v.Operations = v.Operations[:0]
-	}
-	if len(v.PublicKeys) > 0 {
-		v.PublicKeys = v.PublicKeys[:0]
-	}
-	v.PublicKeysSet = false
+	v.Metadata = v.Metadata[:0]
+	v.Operations = v.Operations[:0]
+	v.PublicKeys = v.PublicKeys[:0]
 }
 
 // ConstructionPayloadsResponse type.
@@ -1095,17 +1735,30 @@ type ConstructionPayloadsResponse struct {
 	UnsignedTransaction string
 }
 
+// EncodeJSON encodes ConstructionPayloadsResponse into JSON.
+func (v ConstructionPayloadsResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"payloads":[`...)
+	for i, elem := range v.Payloads {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, ']', ',', '"', 'u', 'n', 's', 'i', 'g', 'n', 'e', 'd', '_', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '"', ':')
+	b = json.AppendString(b, v.UnsignedTransaction)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two ConstructionPayloadsResponse values are equal.
 func (v ConstructionPayloadsResponse) Equal(o ConstructionPayloadsResponse) bool {
-	return SigningPayloadSliceEqual(v.Payloads, o.Payloads) &&
+	return len(v.Payloads) == len(o.Payloads) &&
+		signingPayloadSliceEqual(v.Payloads, o.Payloads) &&
 		v.UnsignedTransaction == o.UnsignedTransaction
 }
 
 // Reset resets ConstructionPayloadsResponse so that it can be reused.
 func (v *ConstructionPayloadsResponse) Reset() {
-	if len(v.Payloads) > 0 {
-		v.Payloads = v.Payloads[:0]
-	}
+	v.Payloads = v.Payloads[:0]
 	v.UnsignedTransaction = ""
 }
 
@@ -1133,41 +1786,65 @@ func (v *ConstructionPayloadsResponse) Reset() {
 // multiplier, the max fee will set an upper bound on the suggested fee
 // (regardless of the multiplier provided).
 type ConstructionPreprocessRequest struct {
-	MaxFee                    []Amount
-	MaxFeeSet                 bool
-	Metadata                  MapObject
-	MetadataSet               bool
-	NetworkIdentifier         NetworkIdentifier
-	Operations                []Operation
-	SuggestedFeeMultiplier    float64
-	SuggestedFeeMultiplierSet bool
+	MaxFee                 []Amount
+	Metadata               MapObject
+	Operations             []Operation
+	SuggestedFeeMultiplier OptionalFloat64Type
+}
+
+// EncodeJSON encodes ConstructionPreprocessRequest into JSON.
+func (v ConstructionPreprocessRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	if len(v.MaxFee) > 0 {
+		b = append(b, `"max_fee":[`...)
+		for i, elem := range v.MaxFee {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"operations":[`...)
+	for i, elem := range v.Operations {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, "],"...)
+	if v.SuggestedFeeMultiplier.Set {
+		b = append(b, '"', 's', 'u', 'g', 'g', 'e', 's', 't', 'e', 'd', '_', 'f', 'e', 'e', '_', 'm', 'u', 'l', 't', 'i', 'p', 'l', 'i', 'e', 'r', '"', ':')
+		b = json.AppendFloat(b, v.SuggestedFeeMultiplier.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two ConstructionPreprocessRequest values are equal.
 func (v ConstructionPreprocessRequest) Equal(o ConstructionPreprocessRequest) bool {
-	return v.MaxFeeSet == o.MaxFeeSet && AmountSliceEqual(v.MaxFee, o.MaxFee) &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		OperationSliceEqual(v.Operations, o.Operations) &&
-		v.SuggestedFeeMultiplierSet == o.SuggestedFeeMultiplierSet && v.SuggestedFeeMultiplier == o.SuggestedFeeMultiplier
+	return len(v.MaxFee) == len(o.MaxFee) &&
+		amountSliceEqual(v.MaxFee, o.MaxFee) &&
+		string(v.Metadata) == string(o.Metadata) &&
+		len(v.Operations) == len(o.Operations) &&
+		operationSliceEqual(v.Operations, o.Operations) &&
+		v.SuggestedFeeMultiplier.Value == o.SuggestedFeeMultiplier.Value &&
+		v.SuggestedFeeMultiplier.Set == o.SuggestedFeeMultiplier.Set
 }
 
 // Reset resets ConstructionPreprocessRequest so that it can be reused.
 func (v *ConstructionPreprocessRequest) Reset() {
-	if len(v.MaxFee) > 0 {
-		v.MaxFee = v.MaxFee[:0]
-	}
-	v.MaxFeeSet = false
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	v.NetworkIdentifier.Reset()
-	if len(v.Operations) > 0 {
-		v.Operations = v.Operations[:0]
-	}
-	v.SuggestedFeeMultiplier = 0
-	v.SuggestedFeeMultiplierSet = false
+	v.MaxFee = v.MaxFee[:0]
+	v.Metadata = v.Metadata[:0]
+	v.Operations = v.Operations[:0]
+	v.SuggestedFeeMultiplier.Value = 0
+	v.SuggestedFeeMultiplier.Set = false
 }
 
 // ConstructionPreprocessResponse contains `options` that will be sent
@@ -1182,47 +1859,67 @@ func (v *ConstructionPreprocessRequest) Reset() {
 type ConstructionPreprocessResponse struct {
 	// The options that will be sent directly to `/construction/metadata` by the
 	// caller.
-	Options               MapObject
-	OptionsSet            bool
-	RequiredPublicKeys    []AccountIdentifier
-	RequiredPublicKeysSet bool
+	Options            MapObject
+	RequiredPublicKeys []AccountIdentifier
+}
+
+// EncodeJSON encodes ConstructionPreprocessResponse into JSON.
+func (v ConstructionPreprocessResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Options) > 0 {
+		b = append(b, `"options":`...)
+		b = append(b, v.Options...)
+		b = append(b, ","...)
+	}
+	if len(v.RequiredPublicKeys) > 0 {
+		b = append(b, '"', 'r', 'e', 'q', 'u', 'i', 'r', 'e', 'd', '_', 'p', 'u', 'b', 'l', 'i', 'c', '_', 'k', 'e', 'y', 's', '"', ':', '[')
+		for i, elem := range v.RequiredPublicKeys {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two ConstructionPreprocessResponse values are equal.
 func (v ConstructionPreprocessResponse) Equal(o ConstructionPreprocessResponse) bool {
-	return v.OptionsSet == o.OptionsSet && MapObjectEqual(v.Options, o.Options) &&
-		v.RequiredPublicKeysSet == o.RequiredPublicKeysSet && AccountIdentifierSliceEqual(v.RequiredPublicKeys, o.RequiredPublicKeys)
+	return string(v.Options) == string(o.Options) &&
+		len(v.RequiredPublicKeys) == len(o.RequiredPublicKeys) &&
+		accountIdentifierSliceEqual(v.RequiredPublicKeys, o.RequiredPublicKeys)
 }
 
 // Reset resets ConstructionPreprocessResponse so that it can be reused.
 func (v *ConstructionPreprocessResponse) Reset() {
-	if len(v.Options) > 0 {
-		v.Options = v.Options[:0]
-	}
-	v.OptionsSet = false
-	if len(v.RequiredPublicKeys) > 0 {
-		v.RequiredPublicKeys = v.RequiredPublicKeys[:0]
-	}
-	v.RequiredPublicKeysSet = false
+	v.Options = v.Options[:0]
+	v.RequiredPublicKeys = v.RequiredPublicKeys[:0]
 }
 
 // ConstructionSubmitRequest type.
 //
 // The transaction submission request includes a signed transaction.
 type ConstructionSubmitRequest struct {
-	NetworkIdentifier NetworkIdentifier
 	SignedTransaction string
+}
+
+// EncodeJSON encodes ConstructionSubmitRequest into JSON.
+func (v ConstructionSubmitRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, '"', 's', 'i', 'g', 'n', 'e', 'd', '_', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '"', ':')
+	b = json.AppendString(b, v.SignedTransaction)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two ConstructionSubmitRequest values are equal.
 func (v ConstructionSubmitRequest) Equal(o ConstructionSubmitRequest) bool {
-	return v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		v.SignedTransaction == o.SignedTransaction
+	return v.SignedTransaction == o.SignedTransaction
 }
 
 // Reset resets ConstructionSubmitRequest so that it can be reused.
 func (v *ConstructionSubmitRequest) Reset() {
-	v.NetworkIdentifier.Reset()
 	v.SignedTransaction = ""
 }
 
@@ -1240,26 +1937,37 @@ type Currency struct {
 	//
 	// For example, it would be useful to populate this object with the contract
 	// address of an ERC-20 token.
-	Metadata    MapObject
-	MetadataSet bool
+	Metadata MapObject
 	// Canonical symbol associated with a currency.
 	Symbol string
+}
+
+// EncodeJSON encodes Currency into JSON.
+func (v Currency) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"decimals":`...)
+	b = json.AppendInt(b, int64(v.Decimals))
+	b = append(b, ","...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"symbol":`...)
+	b = json.AppendString(b, v.Symbol)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two Currency values are equal.
 func (v Currency) Equal(o Currency) bool {
 	return v.Decimals == o.Decimals &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+		string(v.Metadata) == string(o.Metadata) &&
 		v.Symbol == o.Symbol
 }
 
 // Reset resets Currency so that it can be reused.
 func (v *Currency) Reset() {
 	v.Decimals = 0
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 	v.Symbol = ""
 }
 
@@ -1318,13 +2026,11 @@ type Error struct {
 	// the content of Error.Description will likely change across releases (as
 	// implementers improve error documentation). For this reason, the content
 	// in this field is not part of any type assertion (unlike Error.Message).
-	Description    string
-	DescriptionSet bool
+	Description OptionalStringType
 	// Often times it is useful to return context specific to the request that
 	// caused the error (i.e. a sample of the stack trace or impacted account)
 	// in addition to the standard error message.
-	Details    MapObject
-	DetailsSet bool
+	Details MapObject
 	// Message is a network-specific error message.
 	//
 	// The message MUST NOT change for a given code. In particular, this means
@@ -1334,11 +2040,34 @@ type Error struct {
 	Retriable bool
 }
 
+// EncodeJSON encodes Error into JSON.
+func (v Error) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"code":`...)
+	b = json.AppendInt(b, int64(v.Code))
+	b = append(b, ","...)
+	if v.Description.Set {
+		b = append(b, `"description":`...)
+		b = json.AppendString(b, v.Description.Value)
+		b = append(b, ","...)
+	}
+	if len(v.Details) > 0 {
+		b = append(b, `"details":`...)
+		b = append(b, v.Details...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"message":`...)
+	b = json.AppendString(b, v.Message)
+	b = append(b, `,"retriable":`...)
+	b = json.AppendBool(b, v.Retriable)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two Error values are equal.
 func (v Error) Equal(o Error) bool {
 	return v.Code == o.Code &&
-		v.DescriptionSet == o.DescriptionSet && v.Description == o.Description &&
-		v.DetailsSet == o.DetailsSet && MapObjectEqual(v.Details, o.Details) &&
+		v.Description.Value == o.Description.Value &&
+		v.Description.Set == o.Description.Set &&
+		string(v.Details) == string(o.Details) &&
 		v.Message == o.Message &&
 		v.Retriable == o.Retriable
 }
@@ -1346,12 +2075,9 @@ func (v Error) Equal(o Error) bool {
 // Reset resets Error so that it can be reused.
 func (v *Error) Reset() {
 	v.Code = 0
-	v.Description = ""
-	v.DescriptionSet = false
-	if len(v.Details) > 0 {
-		v.Details = v.Details[:0]
-	}
-	v.DetailsSet = false
+	v.Description.Value = ""
+	v.Description.Set = false
+	v.Details = v.Details[:0]
 	v.Message = ""
 	v.Retriable = false
 }
@@ -1361,30 +2087,44 @@ func (v *Error) Reset() {
 type EventsBlocksRequest struct {
 	// limit is the maximum number of events to fetch in one call. The
 	// implementation may return <= limit events.
-	Limit             int64
-	LimitSet          bool
-	NetworkIdentifier NetworkIdentifier
+	Limit OptionalInt64Type
 	// offset is the offset into the event stream to sync events from. If this
 	// field is not populated, we return the limit events backwards from tip. If
 	// this is set to 0, we start from the beginning.
-	Offset    int64
-	OffsetSet bool
+	Offset OptionalInt64Type
+}
+
+// EncodeJSON encodes EventsBlocksRequest into JSON.
+func (v EventsBlocksRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	if v.Limit.Set {
+		b = append(b, `"limit":`...)
+		b = json.AppendInt(b, v.Limit.Value)
+		b = append(b, ","...)
+	}
+	if v.Offset.Set {
+		b = append(b, `"offset":`...)
+		b = json.AppendInt(b, v.Offset.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two EventsBlocksRequest values are equal.
 func (v EventsBlocksRequest) Equal(o EventsBlocksRequest) bool {
-	return v.LimitSet == o.LimitSet && v.Limit == o.Limit &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		v.OffsetSet == o.OffsetSet && v.Offset == o.Offset
+	return v.Limit.Value == o.Limit.Value &&
+		v.Limit.Set == o.Limit.Set &&
+		v.Offset.Value == o.Offset.Value &&
+		v.Offset.Set == o.Offset.Set
 }
 
 // Reset resets EventsBlocksRequest so that it can be reused.
 func (v *EventsBlocksRequest) Reset() {
-	v.Limit = 0
-	v.LimitSet = false
-	v.NetworkIdentifier.Reset()
-	v.Offset = 0
-	v.OffsetSet = false
+	v.Limit.Value = 0
+	v.Limit.Set = false
+	v.Offset.Value = 0
+	v.Offset.Set = false
 }
 
 // EventsBlocksResponse contains an ordered collection of BlockEvents and the
@@ -1399,17 +2139,30 @@ type EventsBlocksResponse struct {
 	MaxSequence int64
 }
 
+// EncodeJSON encodes EventsBlocksResponse into JSON.
+func (v EventsBlocksResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"events":[`...)
+	for i, elem := range v.Events {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, ']', ',', '"', 'm', 'a', 'x', '_', 's', 'e', 'q', 'u', 'e', 'n', 'c', 'e', '"', ':')
+	b = json.AppendInt(b, v.MaxSequence)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two EventsBlocksResponse values are equal.
 func (v EventsBlocksResponse) Equal(o EventsBlocksResponse) bool {
-	return BlockEventSliceEqual(v.Events, o.Events) &&
+	return len(v.Events) == len(o.Events) &&
+		blockEventSliceEqual(v.Events, o.Events) &&
 		v.MaxSequence == o.MaxSequence
 }
 
 // Reset resets EventsBlocksResponse so that it can be reused.
 func (v *EventsBlocksResponse) Reset() {
-	if len(v.Events) > 0 {
-		v.Events = v.Events[:0]
-	}
+	v.Events = v.Events[:0]
 	v.MaxSequence = 0
 }
 
@@ -1441,16 +2194,27 @@ type MempoolResponse struct {
 	TransactionIdentifiers []TransactionIdentifier
 }
 
+// EncodeJSON encodes MempoolResponse into JSON.
+func (v MempoolResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', 's', '"', ':', '[')
+	for i, elem := range v.TransactionIdentifiers {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	return append(b, "]}"...)
+}
+
 // Equal returns whether two MempoolResponse values are equal.
 func (v MempoolResponse) Equal(o MempoolResponse) bool {
-	return TransactionIdentifierSliceEqual(v.TransactionIdentifiers, o.TransactionIdentifiers)
+	return len(v.TransactionIdentifiers) == len(o.TransactionIdentifiers) &&
+		transactionIdentifierSliceEqual(v.TransactionIdentifiers, o.TransactionIdentifiers)
 }
 
 // Reset resets MempoolResponse so that it can be reused.
 func (v *MempoolResponse) Reset() {
-	if len(v.TransactionIdentifiers) > 0 {
-		v.TransactionIdentifiers = v.TransactionIdentifiers[:0]
-	}
+	v.TransactionIdentifiers = v.TransactionIdentifiers[:0]
 }
 
 // MempoolTransactionRequest type.
@@ -1458,19 +2222,24 @@ func (v *MempoolResponse) Reset() {
 // A MempoolTransactionRequest is utilized to retrieve a transaction from the
 // mempool.
 type MempoolTransactionRequest struct {
-	NetworkIdentifier     NetworkIdentifier
 	TransactionIdentifier TransactionIdentifier
+}
+
+// EncodeJSON encodes MempoolTransactionRequest into JSON.
+func (v MempoolTransactionRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	b = append(b, '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.TransactionIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two MempoolTransactionRequest values are equal.
 func (v MempoolTransactionRequest) Equal(o MempoolTransactionRequest) bool {
-	return v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		v.TransactionIdentifier.Equal(o.TransactionIdentifier)
+	return v.TransactionIdentifier.Equal(o.TransactionIdentifier)
 }
 
 // Reset resets MempoolTransactionRequest so that it can be reused.
 func (v *MempoolTransactionRequest) Reset() {
-	v.NetworkIdentifier.Reset()
 	v.TransactionIdentifier.Reset()
 }
 
@@ -1481,22 +2250,31 @@ func (v *MempoolTransactionRequest) Reset() {
 // mempool (ex: fee paid).
 type MempoolTransactionResponse struct {
 	Metadata    MapObject
-	MetadataSet bool
 	Transaction Transaction
+}
+
+// EncodeJSON encodes MempoolTransactionResponse into JSON.
+func (v MempoolTransactionResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"transaction":`...)
+	b = v.Transaction.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two MempoolTransactionResponse values are equal.
 func (v MempoolTransactionResponse) Equal(o MempoolTransactionResponse) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+	return string(v.Metadata) == string(o.Metadata) &&
 		v.Transaction.Equal(o.Transaction)
 }
 
 // Reset resets MempoolTransactionResponse so that it can be reused.
 func (v *MempoolTransactionResponse) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 	v.Transaction.Reset()
 }
 
@@ -1505,21 +2283,27 @@ func (v *MempoolTransactionResponse) Reset() {
 // A MetadataRequest is utilized in any request where the only argument is
 // optional metadata.
 type MetadataRequest struct {
-	Metadata    MapObject
-	MetadataSet bool
+	Metadata MapObject
+}
+
+// EncodeJSON encodes MetadataRequest into JSON.
+func (v MetadataRequest) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+	}
+	return append(b, "}"...)
 }
 
 // Equal returns whether two MetadataRequest values are equal.
 func (v MetadataRequest) Equal(o MetadataRequest) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata)
+	return string(v.Metadata) == string(o.Metadata)
 }
 
 // Reset resets MetadataRequest so that it can be reused.
 func (v *MetadataRequest) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 }
 
 // NetworkIdentifier type.
@@ -1531,24 +2315,40 @@ type NetworkIdentifier struct {
 	// If a blockchain has a specific chain-id or network identifier, it should
 	// go in this field. It is up to the client to determine which
 	// network-specific identifier is mainnet or testnet.
-	Network                 string
-	SubNetworkIdentifier    SubNetworkIdentifier
-	SubNetworkIdentifierSet bool
+	Network              string
+	SubNetworkIdentifier OptionalSubNetworkIdentifierType
+}
+
+// EncodeJSON encodes NetworkIdentifier into JSON.
+func (v NetworkIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"blockchain":`...)
+	b = json.AppendString(b, v.Blockchain)
+	b = append(b, `,"network":`...)
+	b = json.AppendString(b, v.Network)
+	b = append(b, ","...)
+	if v.SubNetworkIdentifier.Set {
+		b = append(b, '"', 's', 'u', 'b', '_', 'n', 'e', 't', 'w', 'o', 'r', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.SubNetworkIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two NetworkIdentifier values are equal.
 func (v NetworkIdentifier) Equal(o NetworkIdentifier) bool {
 	return v.Blockchain == o.Blockchain &&
 		v.Network == o.Network &&
-		v.SubNetworkIdentifierSet == o.SubNetworkIdentifierSet && v.SubNetworkIdentifier.Equal(o.SubNetworkIdentifier)
+		v.SubNetworkIdentifier.Value.Equal(o.SubNetworkIdentifier.Value) &&
+		v.SubNetworkIdentifier.Set == o.SubNetworkIdentifier.Set
 }
 
 // Reset resets NetworkIdentifier so that it can be reused.
 func (v *NetworkIdentifier) Reset() {
 	v.Blockchain = ""
 	v.Network = ""
-	v.SubNetworkIdentifier.Reset()
-	v.SubNetworkIdentifierSet = false
+	v.SubNetworkIdentifier.Value.Reset()
+	v.SubNetworkIdentifier.Set = false
 }
 
 // NetworkListResponse type.
@@ -1559,16 +2359,27 @@ type NetworkListResponse struct {
 	NetworkIdentifiers []NetworkIdentifier
 }
 
+// EncodeJSON encodes NetworkListResponse into JSON.
+func (v NetworkListResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 'n', 'e', 't', 'w', 'o', 'r', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', 's', '"', ':', '[')
+	for i, elem := range v.NetworkIdentifiers {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	return append(b, "]}"...)
+}
+
 // Equal returns whether two NetworkListResponse values are equal.
 func (v NetworkListResponse) Equal(o NetworkListResponse) bool {
-	return NetworkIdentifierSliceEqual(v.NetworkIdentifiers, o.NetworkIdentifiers)
+	return len(v.NetworkIdentifiers) == len(o.NetworkIdentifiers) &&
+		networkIdentifierSliceEqual(v.NetworkIdentifiers, o.NetworkIdentifiers)
 }
 
 // Reset resets NetworkListResponse so that it can be reused.
 func (v *NetworkListResponse) Reset() {
-	if len(v.NetworkIdentifiers) > 0 {
-		v.NetworkIdentifiers = v.NetworkIdentifiers[:0]
-	}
+	v.NetworkIdentifiers = v.NetworkIdentifiers[:0]
 }
 
 // NetworkOptionsResponse contains information about the versioning of the node
@@ -1576,6 +2387,15 @@ func (v *NetworkListResponse) Reset() {
 type NetworkOptionsResponse struct {
 	Allow   Allow
 	Version Version
+}
+
+// EncodeJSON encodes NetworkOptionsResponse into JSON.
+func (v NetworkOptionsResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"allow":`...)
+	b = v.Allow.EncodeJSON(b)
+	b = append(b, `,"version":`...)
+	b = v.Version.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two NetworkOptionsResponse values are equal.
@@ -1595,24 +2415,27 @@ func (v *NetworkOptionsResponse) Reset() {
 // A NetworkRequest is utilized to retrieve some data specific exclusively to a
 // NetworkIdentifier.
 type NetworkRequest struct {
-	Metadata          MapObject
-	MetadataSet       bool
-	NetworkIdentifier NetworkIdentifier
+	Metadata MapObject
+}
+
+// EncodeJSON encodes NetworkRequest into JSON.
+func (v NetworkRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+	}
+	return append(b, "}"...)
 }
 
 // Equal returns whether two NetworkRequest values are equal.
 func (v NetworkRequest) Equal(o NetworkRequest) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier)
+	return string(v.Metadata) == string(o.Metadata)
 }
 
 // Reset resets NetworkRequest so that it can be reused.
 func (v *NetworkRequest) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	v.NetworkIdentifier.Reset()
+	v.Metadata = v.Metadata[:0]
 }
 
 // NetworkStatusResponse contains basic information about the node's view of a
@@ -1629,14 +2452,43 @@ func (v *NetworkRequest) Reset() {
 // monitor healthiness. Without this field, it may appear that the
 // implementation is stuck syncing and needs to be terminated.
 type NetworkStatusResponse struct {
-	CurrentBlockIdentifier   BlockIdentifier
-	CurrentBlockTimestamp    Timestamp
-	GenesisBlockIdentifier   BlockIdentifier
-	OldestBlockIdentifier    BlockIdentifier
-	OldestBlockIdentifierSet bool
-	Peers                    []Peer
-	SyncStatus               SyncStatus
-	SyncStatusSet            bool
+	CurrentBlockIdentifier BlockIdentifier
+	CurrentBlockTimestamp  Timestamp
+	GenesisBlockIdentifier BlockIdentifier
+	OldestBlockIdentifier  OptionalBlockIdentifierType
+	Peers                  []Peer
+	SyncStatus             OptionalSyncStatusType
+}
+
+// EncodeJSON encodes NetworkStatusResponse into JSON.
+func (v NetworkStatusResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, '{', '"', 'c', 'u', 'r', 'r', 'e', 'n', 't', '_', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.CurrentBlockIdentifier.EncodeJSON(b)
+	b = append(b, ',', '"', 'c', 'u', 'r', 'r', 'e', 'n', 't', '_', 'b', 'l', 'o', 'c', 'k', '_', 't', 'i', 'm', 'e', 's', 't', 'a', 'm', 'p', '"', ':')
+	b = json.AppendInt(b, int64(v.CurrentBlockTimestamp))
+	b = append(b, ',', '"', 'g', 'e', 'n', 'e', 's', 'i', 's', '_', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.GenesisBlockIdentifier.EncodeJSON(b)
+	b = append(b, ","...)
+	if v.OldestBlockIdentifier.Set {
+		b = append(b, '"', 'o', 'l', 'd', 'e', 's', 't', '_', 'b', 'l', 'o', 'c', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.OldestBlockIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	b = append(b, `"peers":[`...)
+	for i, elem := range v.Peers {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, "],"...)
+	if v.SyncStatus.Set {
+		b = append(b, `"sync_status":`...)
+		b = v.SyncStatus.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two NetworkStatusResponse values are equal.
@@ -1644,9 +2496,12 @@ func (v NetworkStatusResponse) Equal(o NetworkStatusResponse) bool {
 	return v.CurrentBlockIdentifier.Equal(o.CurrentBlockIdentifier) &&
 		v.CurrentBlockTimestamp == o.CurrentBlockTimestamp &&
 		v.GenesisBlockIdentifier.Equal(o.GenesisBlockIdentifier) &&
-		v.OldestBlockIdentifierSet == o.OldestBlockIdentifierSet && v.OldestBlockIdentifier.Equal(o.OldestBlockIdentifier) &&
-		PeerSliceEqual(v.Peers, o.Peers) &&
-		v.SyncStatusSet == o.SyncStatusSet && v.SyncStatus.Equal(o.SyncStatus)
+		v.OldestBlockIdentifier.Value.Equal(o.OldestBlockIdentifier.Value) &&
+		v.OldestBlockIdentifier.Set == o.OldestBlockIdentifier.Set &&
+		len(v.Peers) == len(o.Peers) &&
+		peerSliceEqual(v.Peers, o.Peers) &&
+		v.SyncStatus.Value.Equal(o.SyncStatus.Value) &&
+		v.SyncStatus.Set == o.SyncStatus.Set
 }
 
 // Reset resets NetworkStatusResponse so that it can be reused.
@@ -1654,13 +2509,11 @@ func (v *NetworkStatusResponse) Reset() {
 	v.CurrentBlockIdentifier.Reset()
 	v.CurrentBlockTimestamp = 0
 	v.GenesisBlockIdentifier.Reset()
-	v.OldestBlockIdentifier.Reset()
-	v.OldestBlockIdentifierSet = false
-	if len(v.Peers) > 0 {
-		v.Peers = v.Peers[:0]
-	}
-	v.SyncStatus.Reset()
-	v.SyncStatusSet = false
+	v.OldestBlockIdentifier.Value.Reset()
+	v.OldestBlockIdentifier.Set = false
+	v.Peers = v.Peers[:0]
+	v.SyncStatus.Value.Reset()
+	v.SyncStatus.Set = false
 }
 
 // Operation type.
@@ -1673,14 +2526,10 @@ func (v *NetworkStatusResponse) Reset() {
 // construct new transactions (Construction API), creating a standard interface
 // for reading and writing to blockchains.
 type Operation struct {
-	Account             AccountIdentifier
-	AccountSet          bool
-	Amount              Amount
-	AmountSet           bool
-	CoinChange          CoinChange
-	CoinChangeSet       bool
+	Account             OptionalAccountIdentifierType
+	Amount              OptionalAmountType
+	CoinChange          OptionalCoinChangeType
 	Metadata            MapObject
-	MetadataSet         bool
 	OperationIdentifier OperationIdentifier
 	// Restrict referenced related_operations to identifier indices < the
 	// current operation_identifier.index. This ensures there exists a clear
@@ -1688,8 +2537,7 @@ type Operation struct {
 	//
 	// Since operations are one-sided, one could imagine relating operations in
 	// a single transfer or linking operations in a call tree.
-	RelatedOperations    []OperationIdentifier
-	RelatedOperationsSet bool
+	RelatedOperations []OperationIdentifier
 	// Status is the network-specific status of the operation. Status is not
 	// defined on the transaction object because blockchains with smart
 	// contracts may have transactions that partially apply (some operations are
@@ -1703,8 +2551,7 @@ type Operation struct {
 	// provided during transaction construction (often times called "intent" in
 	// the documentation) MUST NOT have a populated status field (operations yet
 	// to be included on-chain have not yet succeeded or failed).
-	Status    string
-	StatusSet bool
+	Status OptionalStringType
 	// Type is the network-specific type of the operation. Ensure that any type
 	// that can be returned here is also specified in the
 	// NetworkOptionsResponse. This can be very useful to downstream consumers
@@ -1712,37 +2559,82 @@ type Operation struct {
 	Type string
 }
 
+// EncodeJSON encodes Operation into JSON.
+func (v Operation) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.Account.Set {
+		b = append(b, `"account":`...)
+		b = v.Account.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.Amount.Set {
+		b = append(b, `"amount":`...)
+		b = v.Amount.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.CoinChange.Set {
+		b = append(b, `"coin_change":`...)
+		b = v.CoinChange.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, '"', 'o', 'p', 'e', 'r', 'a', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.OperationIdentifier.EncodeJSON(b)
+	b = append(b, ","...)
+	if len(v.RelatedOperations) > 0 {
+		b = append(b, '"', 'r', 'e', 'l', 'a', 't', 'e', 'd', '_', 'o', 'p', 'e', 'r', 'a', 't', 'i', 'o', 'n', 's', '"', ':', '[')
+		for i, elem := range v.RelatedOperations {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	if v.Status.Set {
+		b = append(b, `"status":`...)
+		b = json.AppendString(b, v.Status.Value)
+		b = append(b, ","...)
+	}
+	b = append(b, `"type":`...)
+	b = json.AppendString(b, v.Type)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two Operation values are equal.
 func (v Operation) Equal(o Operation) bool {
-	return v.AccountSet == o.AccountSet && v.Account.Equal(o.Account) &&
-		v.AmountSet == o.AmountSet && v.Amount.Equal(o.Amount) &&
-		v.CoinChangeSet == o.CoinChangeSet && v.CoinChange.Equal(o.CoinChange) &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+	return v.Account.Value.Equal(o.Account.Value) &&
+		v.Account.Set == o.Account.Set &&
+		v.Amount.Value.Equal(o.Amount.Value) &&
+		v.Amount.Set == o.Amount.Set &&
+		v.CoinChange.Value.Equal(o.CoinChange.Value) &&
+		v.CoinChange.Set == o.CoinChange.Set &&
+		string(v.Metadata) == string(o.Metadata) &&
 		v.OperationIdentifier.Equal(o.OperationIdentifier) &&
-		v.RelatedOperationsSet == o.RelatedOperationsSet && OperationIdentifierSliceEqual(v.RelatedOperations, o.RelatedOperations) &&
-		v.StatusSet == o.StatusSet && v.Status == o.Status &&
+		len(v.RelatedOperations) == len(o.RelatedOperations) &&
+		operationIdentifierSliceEqual(v.RelatedOperations, o.RelatedOperations) &&
+		v.Status.Value == o.Status.Value &&
+		v.Status.Set == o.Status.Set &&
 		v.Type == o.Type
 }
 
 // Reset resets Operation so that it can be reused.
 func (v *Operation) Reset() {
-	v.Account.Reset()
-	v.AccountSet = false
-	v.Amount.Reset()
-	v.AmountSet = false
-	v.CoinChange.Reset()
-	v.CoinChangeSet = false
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Account.Value.Reset()
+	v.Account.Set = false
+	v.Amount.Value.Reset()
+	v.Amount.Set = false
+	v.CoinChange.Value.Reset()
+	v.CoinChange.Set = false
+	v.Metadata = v.Metadata[:0]
 	v.OperationIdentifier.Reset()
-	if len(v.RelatedOperations) > 0 {
-		v.RelatedOperations = v.RelatedOperations[:0]
-	}
-	v.RelatedOperationsSet = false
-	v.Status = ""
-	v.StatusSet = false
+	v.RelatedOperations = v.RelatedOperations[:0]
+	v.Status.Value = ""
+	v.Status.Set = false
 	v.Type = ""
 }
 
@@ -1766,21 +2658,35 @@ type OperationIdentifier struct {
 	// network_index should not be populated if there is no notion of an
 	// operation index in a blockchain (typically most account-based
 	// blockchains).
-	NetworkIndex    int64
-	NetworkIndexSet bool
+	NetworkIndex OptionalInt64Type
+}
+
+// EncodeJSON encodes OperationIdentifier into JSON.
+func (v OperationIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"index":`...)
+	b = json.AppendInt(b, v.Index)
+	b = append(b, ","...)
+	if v.NetworkIndex.Set {
+		b = append(b, `"network_index":`...)
+		b = json.AppendInt(b, v.NetworkIndex.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two OperationIdentifier values are equal.
 func (v OperationIdentifier) Equal(o OperationIdentifier) bool {
 	return v.Index == o.Index &&
-		v.NetworkIndexSet == o.NetworkIndexSet && v.NetworkIndex == o.NetworkIndex
+		v.NetworkIndex.Value == o.NetworkIndex.Value &&
+		v.NetworkIndex.Set == o.NetworkIndex.Set
 }
 
 // Reset resets OperationIdentifier so that it can be reused.
 func (v *OperationIdentifier) Reset() {
 	v.Index = 0
-	v.NetworkIndex = 0
-	v.NetworkIndexSet = false
+	v.NetworkIndex.Value = 0
+	v.NetworkIndex.Set = false
 }
 
 // OperationStatus is utilized to indicate which Operation status are considered
@@ -1797,6 +2703,15 @@ type OperationStatus struct {
 	// critical to understand which Operation.Status indicate an Operation is
 	// successful and should affect an Account.
 	Successful bool
+}
+
+// EncodeJSON encodes OperationStatus into JSON.
+func (v OperationStatus) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"status":`...)
+	b = json.AppendString(b, v.Status)
+	b = append(b, `,"successful":`...)
+	b = json.AppendBool(b, v.Successful)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two OperationStatus values are equal.
@@ -1831,47 +2746,73 @@ func (v Operator) Validate() error {
 // index or hash. If neither property is specified, it is assumed that the
 // client is making a request at the current block.
 type PartialBlockIdentifier struct {
-	Hash     string
-	HashSet  bool
-	Index    int64
-	IndexSet bool
+	Hash  OptionalStringType
+	Index OptionalInt64Type
+}
+
+// EncodeJSON encodes PartialBlockIdentifier into JSON.
+func (v PartialBlockIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.Hash.Set {
+		b = append(b, `"hash":`...)
+		b = json.AppendString(b, v.Hash.Value)
+		b = append(b, ","...)
+	}
+	if v.Index.Set {
+		b = append(b, `"index":`...)
+		b = json.AppendInt(b, v.Index.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two PartialBlockIdentifier values are equal.
 func (v PartialBlockIdentifier) Equal(o PartialBlockIdentifier) bool {
-	return v.HashSet == o.HashSet && v.Hash == o.Hash &&
-		v.IndexSet == o.IndexSet && v.Index == o.Index
+	return v.Hash.Value == o.Hash.Value &&
+		v.Hash.Set == o.Hash.Set &&
+		v.Index.Value == o.Index.Value &&
+		v.Index.Set == o.Index.Set
 }
 
 // Reset resets PartialBlockIdentifier so that it can be reused.
 func (v *PartialBlockIdentifier) Reset() {
-	v.Hash = ""
-	v.HashSet = false
-	v.Index = 0
-	v.IndexSet = false
+	v.Hash.Value = ""
+	v.Hash.Set = false
+	v.Index.Value = 0
+	v.Index.Set = false
 }
 
 // Peer type.
 //
 // A Peer is a representation of a node's peer.
 type Peer struct {
-	Metadata    MapObject
-	MetadataSet bool
-	PeerID      string
+	Metadata MapObject
+	PeerID   string
+}
+
+// EncodeJSON encodes Peer into JSON.
+func (v Peer) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"peer_id":`...)
+	b = json.AppendString(b, v.PeerID)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two Peer values are equal.
 func (v Peer) Equal(o Peer) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+	return string(v.Metadata) == string(o.Metadata) &&
 		v.PeerID == o.PeerID
 }
 
 // Reset resets Peer so that it can be reused.
 func (v *Peer) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 	v.PeerID = ""
 }
 
@@ -1886,17 +2827,24 @@ type PublicKey struct {
 	CurveType CurveType
 }
 
+// EncodeJSON encodes PublicKey into JSON.
+func (v PublicKey) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"hex_bytes":`...)
+	b = json.AppendHexBytes(b, v.Bytes)
+	b = append(b, `,"curve_type":`...)
+	b = json.AppendString(b, string(v.CurveType))
+	return append(b, "}"...)
+}
+
 // Equal returns whether two PublicKey values are equal.
 func (v PublicKey) Equal(o PublicKey) bool {
-	return bytes.Equal(v.Bytes, o.Bytes) &&
+	return string(v.Bytes) == string(o.Bytes) &&
 		v.CurveType == o.CurveType
 }
 
 // Reset resets PublicKey so that it can be reused.
 func (v *PublicKey) Reset() {
-	if len(v.Bytes) > 0 {
-		v.Bytes = v.Bytes[:0]
-	}
+	v.Bytes = v.Bytes[:0]
 	v.CurveType = ""
 }
 
@@ -1907,44 +2855,54 @@ func (v *PublicKey) Reset() {
 // transaction is on the same network.
 type RelatedTransaction struct {
 	Direction             Direction
-	NetworkIdentifier     NetworkIdentifier
-	NetworkIdentifierSet  bool
+	NetworkIdentifier     OptionalNetworkIdentifierType
 	TransactionIdentifier TransactionIdentifier
+}
+
+// EncodeJSON encodes RelatedTransaction into JSON.
+func (v RelatedTransaction) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"direction":`...)
+	b = json.AppendString(b, string(v.Direction))
+	b = append(b, ","...)
+	if v.NetworkIdentifier.Set {
+		b = append(b, '"', 'n', 'e', 't', 'w', 'o', 'r', 'k', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.NetworkIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	b = append(b, '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.TransactionIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two RelatedTransaction values are equal.
 func (v RelatedTransaction) Equal(o RelatedTransaction) bool {
 	return v.Direction == o.Direction &&
-		v.NetworkIdentifierSet == o.NetworkIdentifierSet && v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
+		v.NetworkIdentifier.Value.Equal(o.NetworkIdentifier.Value) &&
+		v.NetworkIdentifier.Set == o.NetworkIdentifier.Set &&
 		v.TransactionIdentifier.Equal(o.TransactionIdentifier)
 }
 
 // Reset resets RelatedTransaction so that it can be reused.
 func (v *RelatedTransaction) Reset() {
 	v.Direction = ""
-	v.NetworkIdentifier.Reset()
-	v.NetworkIdentifierSet = false
+	v.NetworkIdentifier.Value.Reset()
+	v.NetworkIdentifier.Set = false
 	v.TransactionIdentifier.Reset()
 }
 
 // SearchTransactionsRequest is used to search for transactions matching a set
 // of provided conditions in canonical blocks.
 type SearchTransactionsRequest struct {
-	AccountIdentifier    AccountIdentifier
-	AccountIdentifierSet bool
+	AccountIdentifier OptionalAccountIdentifierType
 	// address is AccountIdentifier.Address. This is used to get all
 	// transactions related to an AccountIdentifier.Address, regardless of
 	// SubAccountIdentifier.
-	Address           string
-	AddressSet        bool
-	CoinIdentifier    CoinIdentifier
-	CoinIdentifierSet bool
-	Currency          Currency
-	CurrencySet       bool
+	Address        OptionalStringType
+	CoinIdentifier OptionalCoinIdentifierType
+	Currency       OptionalCurrencyType
 	// limit is the maximum number of transactions to return in one call. The
 	// implementation may return <= limit transactions.
-	Limit    int64
-	LimitSet bool
+	Limit OptionalInt64Type
 	// max_block is the largest block index to consider when searching for
 	// transactions. If this field is not populated, the current block is
 	// considered the max_block.
@@ -1952,76 +2910,145 @@ type SearchTransactionsRequest struct {
 	// If you do not specify a max_block, it is possible a newly synced block
 	// will interfere with paginated transaction queries (as the offset could
 	// become invalid with newly added rows).
-	MaxBlock          int64
-	MaxBlockSet       bool
-	NetworkIdentifier NetworkIdentifier
+	MaxBlock OptionalInt64Type
 	// offset is the offset into the query result to start returning
 	// transactions.
 	//
 	// If any search conditions are changed, the query offset will change and
 	// you must restart your search iteration.
-	Offset      int64
-	OffsetSet   bool
-	Operator    Operator
-	OperatorSet bool
+	Offset   OptionalInt64Type
+	Operator OptionalOperatorType
 	// status is the network-specific operation type.
-	Status    string
-	StatusSet bool
+	Status OptionalStringType
 	// success is a synthetic condition populated by parsing network-specific
 	// operation statuses (using the mapping provided in `/network/options`).
-	Success                  bool
-	SuccessSet               bool
-	TransactionIdentifier    TransactionIdentifier
-	TransactionIdentifierSet bool
+	Success               OptionalBoolType
+	TransactionIdentifier OptionalTransactionIdentifierType
 	// type is the network-specific operation type.
-	Type    string
-	TypeSet bool
+	Type OptionalStringType
+}
+
+// EncodeJSON encodes SearchTransactionsRequest into JSON.
+func (v SearchTransactionsRequest) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+	if v.AccountIdentifier.Set {
+		b = append(b, '"', 'a', 'c', 'c', 'o', 'u', 'n', 't', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.AccountIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.Address.Set {
+		b = append(b, `"address":`...)
+		b = json.AppendString(b, v.Address.Value)
+		b = append(b, ","...)
+	}
+	if v.CoinIdentifier.Set {
+		b = append(b, '"', 'c', 'o', 'i', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.CoinIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.Currency.Set {
+		b = append(b, `"currency":`...)
+		b = v.Currency.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.Limit.Set {
+		b = append(b, `"limit":`...)
+		b = json.AppendInt(b, v.Limit.Value)
+		b = append(b, ","...)
+	}
+	if v.MaxBlock.Set {
+		b = append(b, `"max_block":`...)
+		b = json.AppendInt(b, v.MaxBlock.Value)
+		b = append(b, ","...)
+	}
+	if v.Offset.Set {
+		b = append(b, `"offset":`...)
+		b = json.AppendInt(b, v.Offset.Value)
+		b = append(b, ","...)
+	}
+	if v.Operator.Set {
+		b = append(b, `"operator":`...)
+		b = json.AppendString(b, string(v.Operator.Value))
+		b = append(b, ","...)
+	}
+	if v.Status.Set {
+		b = append(b, `"status":`...)
+		b = json.AppendString(b, v.Status.Value)
+		b = append(b, ","...)
+	}
+	if v.Success.Set {
+		b = append(b, `"success":`...)
+		b = json.AppendBool(b, v.Success.Value)
+		b = append(b, ","...)
+	}
+	if v.TransactionIdentifier.Set {
+		b = append(b, '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.TransactionIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.Type.Set {
+		b = append(b, `"type":`...)
+		b = json.AppendString(b, v.Type.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two SearchTransactionsRequest values are equal.
 func (v SearchTransactionsRequest) Equal(o SearchTransactionsRequest) bool {
-	return v.AccountIdentifierSet == o.AccountIdentifierSet && v.AccountIdentifier.Equal(o.AccountIdentifier) &&
-		v.AddressSet == o.AddressSet && v.Address == o.Address &&
-		v.CoinIdentifierSet == o.CoinIdentifierSet && v.CoinIdentifier.Equal(o.CoinIdentifier) &&
-		v.CurrencySet == o.CurrencySet && v.Currency.Equal(o.Currency) &&
-		v.LimitSet == o.LimitSet && v.Limit == o.Limit &&
-		v.MaxBlockSet == o.MaxBlockSet && v.MaxBlock == o.MaxBlock &&
-		v.NetworkIdentifier.Equal(o.NetworkIdentifier) &&
-		v.OffsetSet == o.OffsetSet && v.Offset == o.Offset &&
-		v.OperatorSet == o.OperatorSet && v.Operator == o.Operator &&
-		v.StatusSet == o.StatusSet && v.Status == o.Status &&
-		v.SuccessSet == o.SuccessSet && v.Success == o.Success &&
-		v.TransactionIdentifierSet == o.TransactionIdentifierSet && v.TransactionIdentifier.Equal(o.TransactionIdentifier) &&
-		v.TypeSet == o.TypeSet && v.Type == o.Type
+	return v.AccountIdentifier.Value.Equal(o.AccountIdentifier.Value) &&
+		v.AccountIdentifier.Set == o.AccountIdentifier.Set &&
+		v.Address.Value == o.Address.Value &&
+		v.Address.Set == o.Address.Set &&
+		v.CoinIdentifier.Value.Equal(o.CoinIdentifier.Value) &&
+		v.CoinIdentifier.Set == o.CoinIdentifier.Set &&
+		v.Currency.Value.Equal(o.Currency.Value) &&
+		v.Currency.Set == o.Currency.Set &&
+		v.Limit.Value == o.Limit.Value &&
+		v.Limit.Set == o.Limit.Set &&
+		v.MaxBlock.Value == o.MaxBlock.Value &&
+		v.MaxBlock.Set == o.MaxBlock.Set &&
+		v.Offset.Value == o.Offset.Value &&
+		v.Offset.Set == o.Offset.Set &&
+		v.Operator.Value == o.Operator.Value &&
+		v.Operator.Set == o.Operator.Set &&
+		v.Status.Value == o.Status.Value &&
+		v.Status.Set == o.Status.Set &&
+		v.Success.Value == o.Success.Value &&
+		v.Success.Set == o.Success.Set &&
+		v.TransactionIdentifier.Value.Equal(o.TransactionIdentifier.Value) &&
+		v.TransactionIdentifier.Set == o.TransactionIdentifier.Set &&
+		v.Type.Value == o.Type.Value &&
+		v.Type.Set == o.Type.Set
 }
 
 // Reset resets SearchTransactionsRequest so that it can be reused.
 func (v *SearchTransactionsRequest) Reset() {
-	v.AccountIdentifier.Reset()
-	v.AccountIdentifierSet = false
-	v.Address = ""
-	v.AddressSet = false
-	v.CoinIdentifier.Reset()
-	v.CoinIdentifierSet = false
-	v.Currency.Reset()
-	v.CurrencySet = false
-	v.Limit = 0
-	v.LimitSet = false
-	v.MaxBlock = 0
-	v.MaxBlockSet = false
-	v.NetworkIdentifier.Reset()
-	v.Offset = 0
-	v.OffsetSet = false
-	v.Operator = ""
-	v.OperatorSet = false
-	v.Status = ""
-	v.StatusSet = false
-	v.Success = false
-	v.SuccessSet = false
-	v.TransactionIdentifier.Reset()
-	v.TransactionIdentifierSet = false
-	v.Type = ""
-	v.TypeSet = false
+	v.AccountIdentifier.Value.Reset()
+	v.AccountIdentifier.Set = false
+	v.Address.Value = ""
+	v.Address.Set = false
+	v.CoinIdentifier.Value.Reset()
+	v.CoinIdentifier.Set = false
+	v.Currency.Value.Reset()
+	v.Currency.Set = false
+	v.Limit.Value = 0
+	v.Limit.Set = false
+	v.MaxBlock.Value = 0
+	v.MaxBlock.Set = false
+	v.Offset.Value = 0
+	v.Offset.Set = false
+	v.Operator.Value = ""
+	v.Operator.Set = false
+	v.Status.Value = ""
+	v.Status.Set = false
+	v.Success.Value = false
+	v.Success.Set = false
+	v.TransactionIdentifier.Value.Reset()
+	v.TransactionIdentifier.Set = false
+	v.Type.Value = ""
+	v.Type.Set = false
 }
 
 // SearchTransactionsResponse contains an ordered collection of
@@ -2031,8 +3058,7 @@ type SearchTransactionsResponse struct {
 	// next_offset is the next offset to use when paginating through transaction
 	// results. If this field is not populated, there are no more transactions
 	// to query.
-	NextOffset    int64
-	NextOffsetSet bool
+	NextOffset OptionalInt64Type
 	// total_count is the number of results for a given search. Callers
 	// typically use this value to concurrently fetch results by offset or to
 	// display a virtual page number associated with results.
@@ -2047,21 +3073,41 @@ type SearchTransactionsResponse struct {
 	Transactions []BlockTransaction
 }
 
+// EncodeJSON encodes SearchTransactionsResponse into JSON.
+func (v SearchTransactionsResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.NextOffset.Set {
+		b = append(b, `"next_offset":`...)
+		b = json.AppendInt(b, v.NextOffset.Value)
+		b = append(b, ","...)
+	}
+	b = append(b, `"total_count":`...)
+	b = json.AppendInt(b, v.TotalCount)
+	b = append(b, ',', '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', 's', '"', ':', '[')
+	for i, elem := range v.Transactions {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	return append(b, "]}"...)
+}
+
 // Equal returns whether two SearchTransactionsResponse values are equal.
 func (v SearchTransactionsResponse) Equal(o SearchTransactionsResponse) bool {
-	return v.NextOffsetSet == o.NextOffsetSet && v.NextOffset == o.NextOffset &&
+	return v.NextOffset.Value == o.NextOffset.Value &&
+		v.NextOffset.Set == o.NextOffset.Set &&
 		v.TotalCount == o.TotalCount &&
-		BlockTransactionSliceEqual(v.Transactions, o.Transactions)
+		len(v.Transactions) == len(o.Transactions) &&
+		blockTransactionSliceEqual(v.Transactions, o.Transactions)
 }
 
 // Reset resets SearchTransactionsResponse so that it can be reused.
 func (v *SearchTransactionsResponse) Reset() {
-	v.NextOffset = 0
-	v.NextOffsetSet = false
+	v.NextOffset.Value = 0
+	v.NextOffset.Set = false
 	v.TotalCount = 0
-	if len(v.Transactions) > 0 {
-		v.Transactions = v.Transactions[:0]
-	}
+	v.Transactions = v.Transactions[:0]
 }
 
 // Signature contains the payload that was signed, the public keys of the
@@ -2077,9 +3123,22 @@ type Signature struct {
 	SigningPayload SigningPayload
 }
 
+// EncodeJSON encodes Signature into JSON.
+func (v Signature) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"hex_bytes":`...)
+	b = json.AppendHexBytes(b, v.Bytes)
+	b = append(b, `,"public_key":`...)
+	b = v.PublicKey.EncodeJSON(b)
+	b = append(b, ',', '"', 's', 'i', 'g', 'n', 'a', 't', 'u', 'r', 'e', '_', 't', 'y', 'p', 'e', '"', ':')
+	b = json.AppendString(b, string(v.SignatureType))
+	b = append(b, ',', '"', 's', 'i', 'g', 'n', 'i', 'n', 'g', '_', 'p', 'a', 'y', 'l', 'o', 'a', 'd', '"', ':')
+	b = v.SigningPayload.EncodeJSON(b)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two Signature values are equal.
 func (v Signature) Equal(o Signature) bool {
-	return bytes.Equal(v.Bytes, o.Bytes) &&
+	return string(v.Bytes) == string(o.Bytes) &&
 		v.PublicKey.Equal(o.PublicKey) &&
 		v.SignatureType == o.SignatureType &&
 		v.SigningPayload.Equal(o.SigningPayload)
@@ -2087,9 +3146,7 @@ func (v Signature) Equal(o Signature) bool {
 
 // Reset resets Signature so that it can be reused.
 func (v *Signature) Reset() {
-	if len(v.Bytes) > 0 {
-		v.Bytes = v.Bytes[:0]
-	}
+	v.Bytes = v.Bytes[:0]
 	v.PublicKey.Reset()
 	v.SignatureType = ""
 	v.SigningPayload.Reset()
@@ -2118,36 +3175,59 @@ func (v SignatureType) Validate() error {
 // SignatureType can be optionally populated if there is a restriction on the
 // signature scheme that can be used to sign the payload.
 type SigningPayload struct {
-	AccountIdentifier    AccountIdentifier
-	AccountIdentifierSet bool
+	AccountIdentifier OptionalAccountIdentifierType
 	// [DEPRECATED by `account_identifier` in `v1.4.4`] The network-specific
 	// address of the account that should sign the payload.
-	Address          string
-	AddressSet       bool
-	Bytes            []byte
-	SignatureType    SignatureType
-	SignatureTypeSet bool
+	Address       OptionalStringType
+	Bytes         []byte
+	SignatureType OptionalSignatureTypeType
+}
+
+// EncodeJSON encodes SigningPayload into JSON.
+func (v SigningPayload) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.AccountIdentifier.Set {
+		b = append(b, '"', 'a', 'c', 'c', 'o', 'u', 'n', 't', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+		b = v.AccountIdentifier.Value.EncodeJSON(b)
+		b = append(b, ","...)
+	}
+	if v.Address.Set {
+		b = append(b, `"address":`...)
+		b = json.AppendString(b, v.Address.Value)
+		b = append(b, ","...)
+	}
+	b = append(b, `"hex_bytes":`...)
+	b = json.AppendHexBytes(b, v.Bytes)
+	b = append(b, ","...)
+	if v.SignatureType.Set {
+		b = append(b, '"', 's', 'i', 'g', 'n', 'a', 't', 'u', 'r', 'e', '_', 't', 'y', 'p', 'e', '"', ':')
+		b = json.AppendString(b, string(v.SignatureType.Value))
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two SigningPayload values are equal.
 func (v SigningPayload) Equal(o SigningPayload) bool {
-	return v.AccountIdentifierSet == o.AccountIdentifierSet && v.AccountIdentifier.Equal(o.AccountIdentifier) &&
-		v.AddressSet == o.AddressSet && v.Address == o.Address &&
-		bytes.Equal(v.Bytes, o.Bytes) &&
-		v.SignatureTypeSet == o.SignatureTypeSet && v.SignatureType == o.SignatureType
+	return v.AccountIdentifier.Value.Equal(o.AccountIdentifier.Value) &&
+		v.AccountIdentifier.Set == o.AccountIdentifier.Set &&
+		v.Address.Value == o.Address.Value &&
+		v.Address.Set == o.Address.Set &&
+		string(v.Bytes) == string(o.Bytes) &&
+		v.SignatureType.Value == o.SignatureType.Value &&
+		v.SignatureType.Set == o.SignatureType.Set
 }
 
 // Reset resets SigningPayload so that it can be reused.
 func (v *SigningPayload) Reset() {
-	v.AccountIdentifier.Reset()
-	v.AccountIdentifierSet = false
-	v.Address = ""
-	v.AddressSet = false
-	if len(v.Bytes) > 0 {
-		v.Bytes = v.Bytes[:0]
-	}
-	v.SignatureType = ""
-	v.SignatureTypeSet = false
+	v.AccountIdentifier.Value.Reset()
+	v.AccountIdentifier.Set = false
+	v.Address.Value = ""
+	v.Address.Set = false
+	v.Bytes = v.Bytes[:0]
+	v.SignatureType.Value = ""
+	v.SignatureType.Set = false
 }
 
 // SubAccountIdentifier type.
@@ -2164,23 +3244,33 @@ type SubAccountIdentifier struct {
 	//
 	// It is important to note that two SubAccounts with identical addresses but
 	// differing metadata will not be considered equal by clients.
-	Metadata    MapObject
-	MetadataSet bool
+	Metadata MapObject
+}
+
+// EncodeJSON encodes SubAccountIdentifier into JSON.
+func (v SubAccountIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"address":`...)
+	b = json.AppendString(b, v.Address)
+	b = append(b, ","...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two SubAccountIdentifier values are equal.
 func (v SubAccountIdentifier) Equal(o SubAccountIdentifier) bool {
 	return v.Address == o.Address &&
-		v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata)
+		string(v.Metadata) == string(o.Metadata)
 }
 
 // Reset resets SubAccountIdentifier so that it can be reused.
 func (v *SubAccountIdentifier) Reset() {
 	v.Address = ""
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 }
 
 // SubNetworkIdentifier type.
@@ -2189,23 +3279,32 @@ func (v *SubAccountIdentifier) Reset() {
 // query some object on a specific shard. This identifier is optional for all
 // non-sharded blockchains.
 type SubNetworkIdentifier struct {
-	Metadata    MapObject
-	MetadataSet bool
-	Network     string
+	Metadata MapObject
+	Network  string
+}
+
+// EncodeJSON encodes SubNetworkIdentifier into JSON.
+func (v SubNetworkIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"network":`...)
+	b = json.AppendString(b, v.Network)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two SubNetworkIdentifier values are equal.
 func (v SubNetworkIdentifier) Equal(o SubNetworkIdentifier) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+	return string(v.Metadata) == string(o.Metadata) &&
 		v.Network == o.Network
 }
 
 // Reset resets SubNetworkIdentifier so that it can be reused.
 func (v *SubNetworkIdentifier) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 	v.Network = ""
 }
 
@@ -2225,11 +3324,9 @@ type SyncStatus struct {
 	// indices up to and including current_block_identifier in
 	// NetworkStatusResponse must be queryable via the /block endpoint
 	// (excluding indices less than oldest_block_identifier).
-	CurrentIndex    int64
-	CurrentIndexSet bool
+	CurrentIndex OptionalInt64Type
 	// Stage is the phase of the sync process.
-	Stage    string
-	StageSet bool
+	Stage OptionalStringType
 	// sycned is a boolean that indicates if an implementation has synced up to
 	// the most recent block. If this field is not populated, the caller should
 	// rely on a traditional tip timestamp comparison to determine if an
@@ -2239,32 +3336,61 @@ type SyncStatus struct {
 	// produced when there are pending transactions). In these blockchains, the
 	// most recent block could have a timestamp far behind the current time but
 	// the node could be healthy and at tip.
-	Synced    bool
-	SyncedSet bool
+	Synced OptionalBoolType
 	// TargetIndex is the index of the block that the implementation is
 	// attempting to sync to in the current stage.
-	TargetIndex    int64
-	TargetIndexSet bool
+	TargetIndex OptionalInt64Type
+}
+
+// EncodeJSON encodes SyncStatus into JSON.
+func (v SyncStatus) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if v.CurrentIndex.Set {
+		b = append(b, `"current_index":`...)
+		b = json.AppendInt(b, v.CurrentIndex.Value)
+		b = append(b, ","...)
+	}
+	if v.Stage.Set {
+		b = append(b, `"stage":`...)
+		b = json.AppendString(b, v.Stage.Value)
+		b = append(b, ","...)
+	}
+	if v.Synced.Set {
+		b = append(b, `"synced":`...)
+		b = json.AppendBool(b, v.Synced.Value)
+		b = append(b, ","...)
+	}
+	if v.TargetIndex.Set {
+		b = append(b, `"target_index":`...)
+		b = json.AppendInt(b, v.TargetIndex.Value)
+		b = append(b, ","...)
+	}
+	b[len(b)-1] = '}'
+	return b
 }
 
 // Equal returns whether two SyncStatus values are equal.
 func (v SyncStatus) Equal(o SyncStatus) bool {
-	return v.CurrentIndexSet == o.CurrentIndexSet && v.CurrentIndex == o.CurrentIndex &&
-		v.StageSet == o.StageSet && v.Stage == o.Stage &&
-		v.SyncedSet == o.SyncedSet && v.Synced == o.Synced &&
-		v.TargetIndexSet == o.TargetIndexSet && v.TargetIndex == o.TargetIndex
+	return v.CurrentIndex.Value == o.CurrentIndex.Value &&
+		v.CurrentIndex.Set == o.CurrentIndex.Set &&
+		v.Stage.Value == o.Stage.Value &&
+		v.Stage.Set == o.Stage.Set &&
+		v.Synced.Value == o.Synced.Value &&
+		v.Synced.Set == o.Synced.Set &&
+		v.TargetIndex.Value == o.TargetIndex.Value &&
+		v.TargetIndex.Set == o.TargetIndex.Set
 }
 
 // Reset resets SyncStatus so that it can be reused.
 func (v *SyncStatus) Reset() {
-	v.CurrentIndex = 0
-	v.CurrentIndexSet = false
-	v.Stage = ""
-	v.StageSet = false
-	v.Synced = false
-	v.SyncedSet = false
-	v.TargetIndex = 0
-	v.TargetIndexSet = false
+	v.CurrentIndex.Value = 0
+	v.CurrentIndex.Set = false
+	v.Stage.Value = ""
+	v.Stage.Set = false
+	v.Synced.Value = false
+	v.Synced.Set = false
+	v.TargetIndex.Value = 0
+	v.TargetIndex.Set = false
 }
 
 // Timestamp type.
@@ -2290,35 +3416,58 @@ type Transaction struct {
 	// Transactions that are related to other transactions (like a cross-shard
 	// transaction) should include the tranaction_identifier of these
 	// transactions in the metadata.
-	Metadata               MapObject
-	MetadataSet            bool
-	Operations             []Operation
-	RelatedTransactions    []RelatedTransaction
-	RelatedTransactionsSet bool
-	TransactionIdentifier  TransactionIdentifier
+	Metadata              MapObject
+	Operations            []Operation
+	RelatedTransactions   []RelatedTransaction
+	TransactionIdentifier TransactionIdentifier
+}
+
+// EncodeJSON encodes Transaction into JSON.
+func (v Transaction) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, `"operations":[`...)
+	for i, elem := range v.Operations {
+		if i != 0 {
+			b = append(b, ","...)
+		}
+		b = elem.EncodeJSON(b)
+	}
+	b = append(b, "],"...)
+	if len(v.RelatedTransactions) > 0 {
+		b = append(b, '"', 'r', 'e', 'l', 'a', 't', 'e', 'd', '_', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', 's', '"', ':', '[')
+		for i, elem := range v.RelatedTransactions {
+			if i != 0 {
+				b = append(b, ","...)
+			}
+			b = elem.EncodeJSON(b)
+		}
+		b = append(b, "],"...)
+	}
+	b = append(b, '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.TransactionIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two Transaction values are equal.
 func (v Transaction) Equal(o Transaction) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		OperationSliceEqual(v.Operations, o.Operations) &&
-		v.RelatedTransactionsSet == o.RelatedTransactionsSet && RelatedTransactionSliceEqual(v.RelatedTransactions, o.RelatedTransactions) &&
+	return string(v.Metadata) == string(o.Metadata) &&
+		len(v.Operations) == len(o.Operations) &&
+		operationSliceEqual(v.Operations, o.Operations) &&
+		len(v.RelatedTransactions) == len(o.RelatedTransactions) &&
+		relatedTransactionSliceEqual(v.RelatedTransactions, o.RelatedTransactions) &&
 		v.TransactionIdentifier.Equal(o.TransactionIdentifier)
 }
 
 // Reset resets Transaction so that it can be reused.
 func (v *Transaction) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	if len(v.Operations) > 0 {
-		v.Operations = v.Operations[:0]
-	}
-	if len(v.RelatedTransactions) > 0 {
-		v.RelatedTransactions = v.RelatedTransactions[:0]
-	}
-	v.RelatedTransactionsSet = false
+	v.Metadata = v.Metadata[:0]
+	v.Operations = v.Operations[:0]
+	v.RelatedTransactions = v.RelatedTransactions[:0]
 	v.TransactionIdentifier.Reset()
 }
 
@@ -2330,6 +3479,13 @@ type TransactionIdentifier struct {
 	// Any transactions that are attributable only to a block (ex: a block
 	// event) should use the hash of the block as the identifier.
 	Hash string
+}
+
+// EncodeJSON encodes TransactionIdentifier into JSON.
+func (v TransactionIdentifier) EncodeJSON(b []byte) []byte {
+	b = append(b, `{"hash":`...)
+	b = json.AppendString(b, v.Hash)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two TransactionIdentifier values are equal.
@@ -2347,22 +3503,31 @@ func (v *TransactionIdentifier) Reset() {
 // `/construction/submit`.
 type TransactionIdentifierResponse struct {
 	Metadata              MapObject
-	MetadataSet           bool
 	TransactionIdentifier TransactionIdentifier
+}
+
+// EncodeJSON encodes TransactionIdentifierResponse into JSON.
+func (v TransactionIdentifierResponse) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	b = append(b, '"', 't', 'r', 'a', 'n', 's', 'a', 'c', 't', 'i', 'o', 'n', '_', 'i', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r', '"', ':')
+	b = v.TransactionIdentifier.EncodeJSON(b)
+	return append(b, "}"...)
 }
 
 // Equal returns whether two TransactionIdentifierResponse values are equal.
 func (v TransactionIdentifierResponse) Equal(o TransactionIdentifierResponse) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
+	return string(v.Metadata) == string(o.Metadata) &&
 		v.TransactionIdentifier.Equal(o.TransactionIdentifier)
 }
 
 // Reset resets TransactionIdentifierResponse so that it can be reused.
 func (v *TransactionIdentifierResponse) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
+	v.Metadata = v.Metadata[:0]
 	v.TransactionIdentifier.Reset()
 }
 
@@ -2373,12 +3538,10 @@ func (v *TransactionIdentifierResponse) Reset() {
 type Version struct {
 	// Any other information that may be useful about versioning of dependent
 	// services should be returned here.
-	Metadata    MapObject
-	MetadataSet bool
+	Metadata MapObject
 	// When a middleware server is used to adhere to the Rosetta interface, it
 	// should return its version here. This can help clients manage deployments.
-	MiddlewareVersion    string
-	MiddlewareVersionSet bool
+	MiddlewareVersion OptionalStringType
 	// The node_version is the canonical version of the node runtime. This can
 	// help clients manage deployments.
 	NodeVersion string
@@ -2388,31 +3551,45 @@ type Version struct {
 	RosettaVersion string
 }
 
+// EncodeJSON encodes Version into JSON.
+func (v Version) EncodeJSON(b []byte) []byte {
+	b = append(b, "{"...)
+	if len(v.Metadata) > 0 {
+		b = append(b, `"metadata":`...)
+		b = append(b, v.Metadata...)
+		b = append(b, ","...)
+	}
+	if v.MiddlewareVersion.Set {
+		b = append(b, '"', 'm', 'i', 'd', 'd', 'l', 'e', 'w', 'a', 'r', 'e', '_', 'v', 'e', 'r', 's', 'i', 'o', 'n', '"', ':')
+		b = json.AppendString(b, v.MiddlewareVersion.Value)
+		b = append(b, ","...)
+	}
+	b = append(b, `"node_version":`...)
+	b = json.AppendString(b, v.NodeVersion)
+	b = append(b, ',', '"', 'r', 'o', 's', 'e', 't', 't', 'a', '_', 'v', 'e', 'r', 's', 'i', 'o', 'n', '"', ':')
+	b = json.AppendString(b, v.RosettaVersion)
+	return append(b, "}"...)
+}
+
 // Equal returns whether two Version values are equal.
 func (v Version) Equal(o Version) bool {
-	return v.MetadataSet == o.MetadataSet && MapObjectEqual(v.Metadata, o.Metadata) &&
-		v.MiddlewareVersionSet == o.MiddlewareVersionSet && v.MiddlewareVersion == o.MiddlewareVersion &&
+	return string(v.Metadata) == string(o.Metadata) &&
+		v.MiddlewareVersion.Value == o.MiddlewareVersion.Value &&
+		v.MiddlewareVersion.Set == o.MiddlewareVersion.Set &&
 		v.NodeVersion == o.NodeVersion &&
 		v.RosettaVersion == o.RosettaVersion
 }
 
 // Reset resets Version so that it can be reused.
 func (v *Version) Reset() {
-	if len(v.Metadata) > 0 {
-		v.Metadata = v.Metadata[:0]
-	}
-	v.MetadataSet = false
-	v.MiddlewareVersion = ""
-	v.MiddlewareVersionSet = false
+	v.Metadata = v.Metadata[:0]
+	v.MiddlewareVersion.Value = ""
+	v.MiddlewareVersion.Set = false
 	v.NodeVersion = ""
 	v.RosettaVersion = ""
 }
 
-// AccountIdentifierSliceEqual returns whether the given AccountIdentifier slice values are equal.
-func AccountIdentifierSliceEqual(a, b []AccountIdentifier) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func accountIdentifierSliceEqual(a, b []AccountIdentifier) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2421,11 +3598,7 @@ func AccountIdentifierSliceEqual(a, b []AccountIdentifier) bool {
 	return true
 }
 
-// AmountSliceEqual returns whether the given Amount slice values are equal.
-func AmountSliceEqual(a, b []Amount) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func amountSliceEqual(a, b []Amount) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2434,11 +3607,7 @@ func AmountSliceEqual(a, b []Amount) bool {
 	return true
 }
 
-// BalanceExemptionSliceEqual returns whether the given BalanceExemption slice values are equal.
-func BalanceExemptionSliceEqual(a, b []BalanceExemption) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func balanceExemptionSliceEqual(a, b []BalanceExemption) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2447,11 +3616,7 @@ func BalanceExemptionSliceEqual(a, b []BalanceExemption) bool {
 	return true
 }
 
-// BlockEventSliceEqual returns whether the given BlockEvent slice values are equal.
-func BlockEventSliceEqual(a, b []BlockEvent) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func blockEventSliceEqual(a, b []BlockEvent) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2460,11 +3625,7 @@ func BlockEventSliceEqual(a, b []BlockEvent) bool {
 	return true
 }
 
-// BlockTransactionSliceEqual returns whether the given BlockTransaction slice values are equal.
-func BlockTransactionSliceEqual(a, b []BlockTransaction) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func blockTransactionSliceEqual(a, b []BlockTransaction) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2473,11 +3634,7 @@ func BlockTransactionSliceEqual(a, b []BlockTransaction) bool {
 	return true
 }
 
-// CoinSliceEqual returns whether the given Coin slice values are equal.
-func CoinSliceEqual(a, b []Coin) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func coinSliceEqual(a, b []Coin) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2486,11 +3643,7 @@ func CoinSliceEqual(a, b []Coin) bool {
 	return true
 }
 
-// CurrencySliceEqual returns whether the given Currency slice values are equal.
-func CurrencySliceEqual(a, b []Currency) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func currencySliceEqual(a, b []Currency) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2499,11 +3652,7 @@ func CurrencySliceEqual(a, b []Currency) bool {
 	return true
 }
 
-// ErrorSliceEqual returns whether the given Error slice values are equal.
-func ErrorSliceEqual(a, b []Error) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func errorSliceEqual(a, b []Error) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2512,11 +3661,7 @@ func ErrorSliceEqual(a, b []Error) bool {
 	return true
 }
 
-// NetworkIdentifierSliceEqual returns whether the given NetworkIdentifier slice values are equal.
-func NetworkIdentifierSliceEqual(a, b []NetworkIdentifier) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func networkIdentifierSliceEqual(a, b []NetworkIdentifier) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2525,11 +3670,7 @@ func NetworkIdentifierSliceEqual(a, b []NetworkIdentifier) bool {
 	return true
 }
 
-// OperationSliceEqual returns whether the given Operation slice values are equal.
-func OperationSliceEqual(a, b []Operation) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func operationSliceEqual(a, b []Operation) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2538,11 +3679,7 @@ func OperationSliceEqual(a, b []Operation) bool {
 	return true
 }
 
-// OperationIdentifierSliceEqual returns whether the given OperationIdentifier slice values are equal.
-func OperationIdentifierSliceEqual(a, b []OperationIdentifier) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func operationIdentifierSliceEqual(a, b []OperationIdentifier) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2551,11 +3688,7 @@ func OperationIdentifierSliceEqual(a, b []OperationIdentifier) bool {
 	return true
 }
 
-// OperationStatusSliceEqual returns whether the given OperationStatus slice values are equal.
-func OperationStatusSliceEqual(a, b []OperationStatus) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func operationStatusSliceEqual(a, b []OperationStatus) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2564,11 +3697,7 @@ func OperationStatusSliceEqual(a, b []OperationStatus) bool {
 	return true
 }
 
-// PeerSliceEqual returns whether the given Peer slice values are equal.
-func PeerSliceEqual(a, b []Peer) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func peerSliceEqual(a, b []Peer) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2577,11 +3706,7 @@ func PeerSliceEqual(a, b []Peer) bool {
 	return true
 }
 
-// PublicKeySliceEqual returns whether the given PublicKey slice values are equal.
-func PublicKeySliceEqual(a, b []PublicKey) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func publicKeySliceEqual(a, b []PublicKey) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2590,11 +3715,7 @@ func PublicKeySliceEqual(a, b []PublicKey) bool {
 	return true
 }
 
-// RelatedTransactionSliceEqual returns whether the given RelatedTransaction slice values are equal.
-func RelatedTransactionSliceEqual(a, b []RelatedTransaction) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func relatedTransactionSliceEqual(a, b []RelatedTransaction) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2603,11 +3724,7 @@ func RelatedTransactionSliceEqual(a, b []RelatedTransaction) bool {
 	return true
 }
 
-// SignatureSliceEqual returns whether the given Signature slice values are equal.
-func SignatureSliceEqual(a, b []Signature) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func signatureSliceEqual(a, b []Signature) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2616,11 +3733,7 @@ func SignatureSliceEqual(a, b []Signature) bool {
 	return true
 }
 
-// SigningPayloadSliceEqual returns whether the given SigningPayload slice values are equal.
-func SigningPayloadSliceEqual(a, b []SigningPayload) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func signingPayloadSliceEqual(a, b []SigningPayload) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2629,11 +3742,7 @@ func SigningPayloadSliceEqual(a, b []SigningPayload) bool {
 	return true
 }
 
-// TransactionSliceEqual returns whether the given Transaction slice values are equal.
-func TransactionSliceEqual(a, b []Transaction) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func transactionSliceEqual(a, b []Transaction) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
@@ -2642,11 +3751,7 @@ func TransactionSliceEqual(a, b []Transaction) bool {
 	return true
 }
 
-// TransactionIdentifierSliceEqual returns whether the given TransactionIdentifier slice values are equal.
-func TransactionIdentifierSliceEqual(a, b []TransactionIdentifier) bool {
-	if len(a) != len(b) {
-		return false
-	}
+func transactionIdentifierSliceEqual(a, b []TransactionIdentifier) bool {
 	for i, elem := range a {
 		if !elem.Equal(b[i]) {
 			return false
