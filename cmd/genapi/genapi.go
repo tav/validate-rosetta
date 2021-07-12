@@ -43,18 +43,23 @@ type Endpoint struct {
 	URL         string
 }
 
+type EncoderOpt struct {
+	Comma  bool
+	Prefix string
+}
+
 type Field struct {
-	Description string
-	Ident       string
-	MinZero     bool // for "float64" / "int32" / "int64" types
-	Model       *Model
-	Name        string
-	Ref         string
-	Optional    bool
-	Skip        bool
-	Slice       bool
-	Validate    bool
-	Type        string
+	Description  string
+	Ident        string
+	MinZero      bool // for "float64" / "int32" / "int64" types
+	Model        *Model
+	Name         string
+	Ref          string
+	Optional     bool
+	OptionalType string
+	Slice        bool
+	Validate     bool
+	Type         string
 }
 
 type Model struct {
@@ -74,34 +79,27 @@ func (m *Model) ValidateStatus() bool {
 	return len(m.Enum) > 0 || m.MinZero
 }
 
-func appendJSONKey(k string) string {
-	if len(k) <= 13 {
-		return fmt.Sprintf("`%s`...", `"`+k+`":`)
+func appendJSONKey(k string, prefix string, suffix string) string {
+	if len(k) <= (13 - len(prefix) - len(suffix)) {
+		return fmt.Sprintf("`%s`...", prefix+`"`+k+`":`+suffix)
 	}
-	params := []byte(`'"', '`)
+	prefix += `"`
+	var params []byte
+	for i := 0; i < len(prefix); i++ {
+		params = append(params, '\'', prefix[i], '\'', ',', ' ')
+	}
 	for i := 0; i < len(k); i++ {
 		if i != 0 {
-			params = append(params, ", '"...)
+			params = append(params, ", "...)
 		}
-		char := k[i]
-		params = append(params, char, '\'')
+		params = append(params, '\'', k[i], '\'')
 	}
-	return string(append(params, `, '"', ':'`...))
-}
-
-func appendJSONKeySlice(k string) string {
-	if len(k) <= 12 {
-		return fmt.Sprintf("`%s`...", `"`+k+`":[`)
+	params = append(params, `, '"', ':'`...)
+	for i := 0; i < len(suffix); i++ {
+		params = append(params, ", '"...)
+		params = append(params, suffix[i], '\'')
 	}
-	params := []byte(`'"', '`)
-	for i := 0; i < len(k); i++ {
-		if i != 0 {
-			params = append(params, ", '"...)
-		}
-		char := k[i]
-		params = append(params, char, '\'')
-	}
-	return string(append(params, `, '"', ':', '['`...))
+	return string(params)
 }
 
 func commentLines(text string) [][]byte {
@@ -213,6 +211,17 @@ func getModelName(src string) string {
 	return src[strings.LastIndexByte(src, '/')+1:]
 }
 
+func getOptionalIdent(name string) string {
+	var ident []byte
+	lead := name[0]
+	if lead >= 'a' && lead <= 'z' {
+		ident = append(ident, lead-32)
+	} else {
+		ident = append(ident, lead)
+	}
+	return string(append(ident, name[1:]...))
+}
+
 func getPath(src map[string]interface{}, elems ...string) string {
 	last := len(elems) - 1
 	for i, elem := range elems {
@@ -234,6 +243,15 @@ func getPrivateIdent(name string) string {
 func getRPCModel(src map[string]interface{}, elems ...string) string {
 	elems = append(elems, "content", "application/json", "schema", "$ref")
 	return getModelName(getPath(src, elems...))
+}
+
+func getRefIdent(name string) string {
+	ref := getModelName(name)
+	idx := strings.LastIndexByte(ref, '.')
+	if idx >= 0 {
+		ref = ref[:idx]
+	}
+	return ref
 }
 
 func getSpec(root string) (string, map[string]interface{}) {
@@ -275,6 +293,18 @@ func logFormatError(src []byte, err error) {
 		)
 	}
 }
+
+// We can potentially collapse multiple writes to the buffer based on the field
+// order. However, this may affect the cache line.
+//
+// func optimalEncodingFields(model *Model) []*Field {
+// 	fields := make([]*Field, len(model.Fields))
+// 	copy(fields, model.Fields)
+// 	sort.SliceStable(fields, func(i, j int) bool {
+// 		return true
+// 	})
+// 	return fields
+// }
 
 func processEndpoints(specDir string, spec map[string]interface{}) ([]*Endpoint, map[string]bool) {
 	var endpoints []*Endpoint
@@ -371,7 +401,7 @@ func processModels(specDir string, spec map[string]interface{}, reqs map[string]
 							}
 							field.Type = "[]string"
 						} else {
-							field.Ref = ref.(string)
+							field.Ref = getRefIdent(ref.(string))
 						}
 					case "object":
 						field.Slice = true
@@ -414,7 +444,12 @@ func processModels(specDir string, spec map[string]interface{}, reqs map[string]
 						log.Fatalf("Unknown field type: %q", typ)
 					}
 				} else {
-					field.Ref = ref.(string)
+					ref := getRefIdent(ref.(string))
+					if ref == "NetworkIdentifier" && model.EndpointRequest {
+						model.Network = true
+						continue
+					}
+					field.Ref = ref
 				}
 				if name == "hex_bytes" {
 					field.Slice = true
@@ -460,23 +495,12 @@ func processModels(specDir string, spec map[string]interface{}, reqs map[string]
 			if field.Ref == "" {
 				continue
 			}
-			ref := getModelName(field.Ref)
-			idx := strings.LastIndexByte(ref, '.')
-			if idx >= 0 {
-				ref = ref[:idx]
-			}
-			refModel, ok := mapping[ref]
+			refModel, ok := mapping[field.Ref]
 			if !ok {
-				log.Fatalf("Could not find model %s", ref)
-			}
-			if refModel.Name == "NetworkIdentifier" && model.EndpointRequest {
-				field.Skip = true
-				model.Network = true
-				continue
+				log.Fatalf("Could not find model %s", field.Ref)
 			}
 			refModel.Referenced = append(refModel.Referenced, model)
 			field.Model = refModel
-			field.Ref = ref
 			switch refModel.Type {
 			case "struct":
 				if field.Slice {
@@ -580,8 +604,9 @@ func writeCommentLine(b *bytes.Buffer, src []byte, prefix []byte, limit int) {
 	}
 }
 
-func writeEncodeJSONField(b *bytes.Buffer, field *Field, cond string, enc string) {
-	key := appendJSONKey(field.Name)
+func writeEncodeJSONField(b *bytes.Buffer, field *Field, opt *EncoderOpt, cond string, enc string) {
+	key := appendJSONKey(field.Name, opt.Prefix, "")
+	opt.Prefix = ""
 	if field.Optional {
 		fmt.Fprintf(b, `	if %s {
 		b = append(b, %s)
@@ -589,34 +614,65 @@ func writeEncodeJSONField(b *bytes.Buffer, field *Field, cond string, enc string
 	} else {
 		fmt.Fprintf(b, "\tb = append(b, %s)\n", key)
 	}
-	fmt.Fprintf(b, "\tb = "+enc+"\n", field.Ident)
+	ident := field.Ident
+	if field.OptionalType != "" {
+		ident += ".Value"
+	}
+	fmt.Fprintf(b, "\tb = "+enc+"\n", ident)
 	if field.Optional {
-		fmt.Fprintf(b, "\tb = append(b, \",\"...)\n\t}\n")
+		if opt.Comma {
+			fmt.Fprintf(b, "\tb = append(b, \",\"...)\n\t}\n")
+		} else {
+			fmt.Fprintf(b, "\t}\n\treturn append(b, \"}\"...)\n")
+		}
 	} else {
-		fmt.Fprintf(b, "\tb = append(b, \",\"...)\n")
+		if opt.Comma {
+			opt.Prefix = ","
+		} else {
+			fmt.Fprintf(b, "\treturn append(b, \"}\"...)\n")
+		}
 	}
 }
 
-func writeEncodeJSONFieldRef(b *bytes.Buffer, field *Field, enc string) {
-	enc = fmt.Sprintf(enc, field.Ident)
-	key := appendJSONKey(field.Name)
+func writeEncodeJSONFieldRef(b *bytes.Buffer, field *Field, opt *EncoderOpt, enc string) {
+	ident := field.Ident
+	if field.OptionalType != "" {
+		ident += ".Value"
+	}
+	enc = fmt.Sprintf(enc, ident)
+	key := appendJSONKey(field.Name, opt.Prefix, "")
+	opt.Prefix = ""
 	if field.Optional {
-		fmt.Fprintf(b, `	if v.%sSet {
+		fmt.Fprintf(b, `	if v.%s.Set {
 		b = append(b, %s)
 		b = %s
-		b = append(b, ","...)
-	}
 `, field.Ident, key, enc)
+		if opt.Comma {
+			b.WriteString(`		b = append(b, ","...)
+	}
+`)
+		} else {
+			b.WriteString(`		}
+	return append(b, "}"...)
+`)
+
+		}
 	} else {
 		fmt.Fprintf(b, `	b = append(b, %s)
-	b = %s
-	b = append(b, ","...)
-`, key, enc)
+			b = %s
+		`, key, enc)
+		if opt.Comma {
+			opt.Prefix = ","
+		} else {
+			b.WriteString(`	return append(b, "}"...)
+`)
+		}
 	}
 }
 
-func writeEncodeJSONFieldSlice(b *bytes.Buffer, field *Field, enc string) {
-	key := appendJSONKeySlice(field.Name)
+func writeEncodeJSONFieldSlice(b *bytes.Buffer, field *Field, opt *EncoderOpt, enc string) {
+	key := appendJSONKey(field.Name, opt.Prefix, "[")
+	opt.Prefix = ""
 	if field.Optional {
 		fmt.Fprintf(b, `	if len(v.%s) > 0 {
 `, field.Ident)
@@ -628,72 +684,116 @@ func writeEncodeJSONFieldSlice(b *bytes.Buffer, field *Field, enc string) {
 		}
 		b = %s
 	}
-	b = append(b, "],"...)
 `, key, field.Ident, enc)
-	if field.Optional {
-		b.WriteString("\t}\n")
+	if opt.Comma {
+		if field.Optional {
+			b.WriteString(`	b = append(b, "],"...)
+	}
+`)
+		} else {
+			opt.Prefix = "],"
+		}
+	} else {
+		b.WriteString(`	return append(b, "]}"...)
+`)
+		if field.Optional {
+			b.WriteString(`	}
+	return append(b, "}"...)
+`)
+		}
 	}
 }
 
 func writeEncodeJSONFunc(b *bytes.Buffer, model *Model) {
 	fmt.Fprintf(b, "// EncodeJSON encodes %s into JSON.\n", model.Name)
-	prelude := `func (v %s) EncodeJSON(b []byte) []byte {
-	b = append(b, "{"...)
-`
-	if model.EndpointRequest && model.Network {
-		if len(model.Fields) == 0 {
-			panic("unexpected")
-		}
-		prelude = `func (v %s) EncodeJSON(b []byte, network []byte) []byte {
-	b = append(b, network...)
-`
+	opt := &EncoderOpt{
+		Prefix: "{",
 	}
-	fmt.Fprintf(b, prelude, model.Name)
-	for _, field := range model.Fields {
+	if model.Network {
+		if len(model.Fields) == 0 {
+			log.Fatalf("Unexpected API request model with no fields: %s", model.Name)
+		} else if len(model.Fields) > 1 {
+			opt.Comma = true
+		}
+		opt.Prefix = ""
+		fmt.Fprintf(b, `func (v %s) EncodeJSON(b []byte, network []byte) []byte {
+	b = append(b, network...)
+`, model.Name)
+	} else {
+		fmt.Fprintf(b, `func (v %s) EncodeJSON(b []byte) []byte {
+`, model.Name)
+		if len(model.Fields) > 1 {
+			opt.Comma = true
+		}
+		if len(model.Fields) == 0 || model.Fields[0].Optional {
+			b.WriteString(`	b = append(b, "{"...)
+`)
+			opt.Prefix = ""
+		}
+	}
+	last := len(model.Fields) - 1
+	for i, field := range model.Fields {
+		if i == last && !field.Optional {
+			opt.Comma = false
+		}
+		if i > 0 && field.Optional && opt.Prefix != "" {
+			fmt.Fprintf(b, `	b = append(b, "%s"...)
+`, opt.Prefix)
+			opt.Prefix = ""
+		}
 		switch field.Type {
 		case "string":
-			writeEncodeJSONField(b, field, `v.%sSet`, "json.AppendString(b, v.%s)")
+			writeEncodeJSONField(b, field, opt, `v.%s.Set`, "json.AppendString(b, v.%s)")
 		case "int64":
-			writeEncodeJSONField(b, field, `v.%sSet`, "json.AppendInt(b, v.%s)")
+			writeEncodeJSONField(b, field, opt, `v.%s.Set`, "json.AppendInt(b, v.%s)")
 		case "MapObject":
-			writeEncodeJSONField(b, field, `len(v.%s) > 0`, "append(b, v.%s...)")
-		case "[]byte":
-			writeEncodeJSONField(b, field, `len(v.%s) > 0`, "json.AppendHexBytes(b, v.%s)")
-		case "int32":
-			writeEncodeJSONField(b, field, `v.%sSet`, "json.AppendInt(b, int64(v.%s))")
-		case "bool":
-			writeEncodeJSONField(b, field, `v.%sSet`, "json.AppendBool(b, v.%s)")
-		case "float64":
-			writeEncodeJSONField(b, field, `v.%sSet`, "json.AppendFloat(b, v.%s)")
-		default:
-			// TODO
-			if field.Model == nil {
-				continue
+			if field.Optional {
+				writeEncodeJSONField(b, field, opt, `len(v.%s) > 0`, "append(b, v.%s...)")
+			} else {
+				writeEncodeJSONField(b, field, opt, "", "appendMapObject(b, v.%s)")
 			}
+		case "[]byte":
+			writeEncodeJSONField(b, field, opt, `len(v.%s) > 0`, "json.AppendHexBytes(b, v.%s)")
+		case "int32":
+			writeEncodeJSONField(b, field, opt, `v.%s.Set`, "json.AppendInt(b, int64(v.%s))")
+		case "bool":
+			writeEncodeJSONField(b, field, opt, `v.%s.Set`, "json.AppendBool(b, v.%s)")
+		case "float64":
+			writeEncodeJSONField(b, field, opt, `v.%s.Set`, "json.AppendFloat(b, v.%s)")
+		case "[]string":
+			writeEncodeJSONFieldSlice(b, field, opt, "json.AppendString(b, elem)")
+		default:
 			switch field.Model.Type {
 			case "struct":
 				if field.Slice {
-					writeEncodeJSONFieldSlice(b, field, "elem.EncodeJSON(b)")
+					writeEncodeJSONFieldSlice(b, field, opt, "elem.EncodeJSON(b)")
 				} else {
-					writeEncodeJSONFieldRef(b, field, "v.%s.EncodeJSON(b)")
+					writeEncodeJSONFieldRef(b, field, opt, "v.%s.EncodeJSON(b)")
 				}
-				continue
 			case "string":
-				writeEncodeJSONFieldRef(b, field, "json.AppendString(b, string(v.%s))")
-				continue
+				writeEncodeJSONFieldRef(b, field, opt, "json.AppendString(b, string(v.%s))")
 			case "int64":
-				writeEncodeJSONFieldRef(b, field, "json.AppendInt(b, int64(v.%s))")
-				continue
+				writeEncodeJSONFieldRef(b, field, opt, "json.AppendInt(b, int64(v.%s))")
+			default:
+				log.Fatalf("Unexpected field for EncodeJSON: %s.%s", model.Name, field.Ident)
 			}
-			panic("unexpected")
 		}
 	}
-	fmt.Fprintf(b, `	last := len(b) - 1
-	if b[last] == ',' {
-		b[last] = '}'
-		return b
+	if !opt.Comma {
+		if opt.Prefix != "" {
+			log.Fatalf("Unexpected prefix field for EncodeJSON in %s: %q", model.Name, opt.Prefix)
+		}
+		b.WriteString("}\n")
+		return
 	}
-	return append(b, "}"...)
+	if opt.Prefix != "" {
+		fmt.Fprintf(b, `	b = append(b, "%s"...)
+`, opt.Prefix)
+		// TODO
+		log.Fatalf("%s.%s", model.Name, "x")
+	}
+	fmt.Fprintf(b, `	b[len(b) - 1] = '}'
+	return b
 }
 `)
 }
@@ -727,21 +827,22 @@ func (v %s) Equal(o %s) bool {
 		return `, model.Name, model.Name, model.Name)
 	written := false
 	for _, field := range model.Fields {
-		if field.Skip {
-			continue
-		}
 		if written {
 			b.WriteString(" &&\n\t\t")
 		}
+		ident := field.Ident
+		if field.OptionalType != "" {
+			ident += ".Value"
+		}
 		switch field.Type {
 		case "string", "int32", "int64", "bool", "float64":
-			fmt.Fprintf(b, "v.%s == o.%s", field.Ident, field.Ident)
+			fmt.Fprintf(b, "v.%s == o.%s", ident, ident)
 		case "MapObject", "[]byte":
-			fmt.Fprintf(b, "string(v.%s) == string(o.%s)", field.Ident, field.Ident)
+			fmt.Fprintf(b, "string(v.%s) == string(o.%s)", ident, ident)
 		case "[]string":
 			fmt.Fprintf(
 				b, "len(v.%s) == len(o.%s) &&\n\t\tstringSliceEqual(v.%s, o.%s)",
-				field.Ident, field.Ident, field.Ident, field.Ident,
+				ident, ident, ident, ident,
 			)
 		default:
 			if field.Slice {
@@ -749,18 +850,18 @@ func (v %s) Equal(o %s) bool {
 				equals[field.Model.Name] = prefix
 				fmt.Fprintf(
 					b, "len(v.%s) == len(o.%s) &&\n\t\t%sSliceEqual(v.%s, o.%s)",
-					field.Ident, field.Ident, prefix, field.Ident, field.Ident,
+					ident, ident, prefix, ident, ident,
 				)
 			} else {
 				if field.Model != nil && field.Model.Type == "struct" {
-					fmt.Fprintf(b, "v.%s.Equal(o.%s)", field.Ident, field.Ident)
+					fmt.Fprintf(b, "v.%s.Equal(o.%s)", ident, ident)
 				} else {
-					fmt.Fprintf(b, "v.%s == o.%s", field.Ident, field.Ident)
+					fmt.Fprintf(b, "v.%s == o.%s", ident, ident)
 				}
 			}
 		}
-		if field.Optional && !field.Slice {
-			fmt.Fprintf(b, " &&\n\t\tv.%sSet == o.%sSet", field.Ident, field.Ident)
+		if field.OptionalType != "" {
+			fmt.Fprintf(b, " &&\n\t\tv.%s.Set == o.%s.Set", field.Ident, field.Ident)
 		}
 		written = true
 	}
@@ -814,6 +915,7 @@ func writeModelComment(b *bytes.Buffer, model *Model) {
 
 func writeModels(b *bytes.Buffer, models []*Model) {
 	equals := map[string]string{}
+	writeOptionals(b, models)
 	for _, model := range models {
 		writeModelComment(b, model)
 		switch model.Type {
@@ -831,6 +933,50 @@ func writeModels(b *bytes.Buffer, models []*Model) {
 		}
 	}
 	writeSliceEqualFuncs(b, equals)
+}
+
+func writeOptionals(b *bytes.Buffer, models []*Model) {
+	mapping := map[string]string{}
+	for _, model := range models {
+		for _, field := range model.Fields {
+			if !field.Optional || field.Slice {
+				continue
+			}
+			ident, ok := mapping[field.Type]
+			if !ok {
+				ident = getOptionalIdent(field.Type)
+				mapping[field.Type] = ident
+			}
+			field.OptionalType = ident
+		}
+	}
+	type Optional struct {
+		Ident string
+		Type  string
+	}
+	var opts []Optional
+	for typ, ident := range mapping {
+		opts = append(opts, Optional{ident, typ})
+	}
+	sort.Slice(opts, func(i, j int) bool {
+		return opts[i].Ident < opts[j].Ident
+	})
+	for _, opt := range opts {
+		fmt.Fprintf(b, `// Optional%sType encapsulates an optional %s value.
+type Optional%sType struct {
+	Set		bool
+	Value	%s
+}
+`, opt.Ident, opt.Type, opt.Ident, opt.Type)
+	}
+	for _, opt := range opts {
+		fmt.Fprintf(b, `// Optional%s creates an optional %s value.
+func Optional%s(v %s) Optional%sType {
+	return Optional%sType{true, v}
+}
+`, opt.Ident, opt.Type, opt.Ident, opt.Type, opt.Ident, opt.Ident)
+	}
+	b.WriteString("\n")
 }
 
 func writePrelude(b *bytes.Buffer) {
@@ -868,36 +1014,37 @@ func writeResetFunc(b *bytes.Buffer, model *Model) {
 func (v *%s) Reset() {
 `, model.Name, model.Name)
 	for _, field := range model.Fields {
-		if field.Skip {
-			continue
+		ident := field.Ident
+		if field.OptionalType != "" {
+			ident += ".Value"
 		}
 		switch field.Type {
 		case "string":
-			fmt.Fprintf(b, "\tv.%s = \"\"\n", field.Ident)
+			fmt.Fprintf(b, "\tv.%s = \"\"\n", ident)
 		case "int32", "int64", "float64":
-			fmt.Fprintf(b, "\tv.%s = 0\n", field.Ident)
+			fmt.Fprintf(b, "\tv.%s = 0\n", ident)
 		case "bool":
-			fmt.Fprintf(b, "\tv.%s = false\n", field.Ident)
+			fmt.Fprintf(b, "\tv.%s = false\n", ident)
 		default:
 			if field.Slice {
-				fmt.Fprintf(b, "\tv.%s = v.%s[:0]\n", field.Ident, field.Ident)
+				fmt.Fprintf(b, "\tv.%s = v.%s[:0]\n", ident, ident)
 			} else if field.Model != nil {
 				switch field.Model.Type {
 				case "string":
-					fmt.Fprintf(b, "\tv.%s = \"\"\n", field.Ident)
+					fmt.Fprintf(b, "\tv.%s = \"\"\n", ident)
 				case "int32", "int64", "float64":
-					fmt.Fprintf(b, "\tv.%s = 0\n", field.Ident)
+					fmt.Fprintf(b, "\tv.%s = 0\n", ident)
 				case "bool":
-					fmt.Fprintf(b, "\tv.%s = false\n", field.Ident)
+					fmt.Fprintf(b, "\tv.%s = false\n", ident)
 				default:
-					fmt.Fprintf(b, "\tv.%s.Reset()\n", field.Ident)
+					fmt.Fprintf(b, "\tv.%s.Reset()\n", ident)
 				}
 			} else {
-				fmt.Fprintf(b, "\tv.%s.Reset()\n", field.Ident)
+				fmt.Fprintf(b, "\tv.%s.Reset()\n", ident)
 			}
 		}
-		if field.Optional && !field.Slice {
-			fmt.Fprintf(b, "\tv.%sSet = false\n", field.Ident)
+		if field.OptionalType != "" {
+			fmt.Fprintf(b, "\tv.%s.Set = false\n", field.Ident)
 		}
 	}
 	b.WriteString("}\n\n")
@@ -951,15 +1098,13 @@ func (v %s) Validate() error {
 func writeStructModel(b *bytes.Buffer, model *Model) {
 	fmt.Fprintf(b, "type %s struct {\n", model.Name)
 	for _, field := range model.Fields {
-		if field.Skip {
-			continue
-		}
 		if field.Description != "" {
 			writeComment(b, field.Description, 1)
 		}
-		fmt.Fprintf(b, "\t%s\t%s\n", field.Ident, field.Type)
 		if field.Optional && !field.Slice {
-			fmt.Fprintf(b, "\t%sSet\tbool\n", field.Ident)
+			fmt.Fprintf(b, "\t%s\tOptional%sType\n", field.Ident, field.OptionalType)
+		} else {
+			fmt.Fprintf(b, "\t%s\t%s\n", field.Ident, field.Type)
 		}
 	}
 	b.WriteString("}\n\n")
