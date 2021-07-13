@@ -331,6 +331,9 @@ func processEndpoints(specDir string, spec map[string]interface{}) ([]*Endpoint,
 			URL:         path,
 		})
 	}
+	sort.Slice(endpoints, func(i, j int) bool {
+		return endpoints[i].Name < endpoints[j].Name
+	})
 	return endpoints, reqs
 }
 
@@ -531,18 +534,6 @@ func processModels(specDir string, spec map[string]interface{}, reqs map[string]
 	return models
 }
 
-func writeClient(b *bytes.Buffer) {
-	b.WriteString(`// Client handles requests to Rosetta API servers.
-//
-// A Client can only be used to do one API call at a time. That is, do not
-// re-use a Client while a previous call is still being handled.
-type Client struct {
-	baseURL string
-}
-
-`)
-}
-
 func writeComment(b *bytes.Buffer, text string, tabs int) {
 	if text[0] == '\n' {
 		log.Fatalf("Got comment with a leading newline: %q", text)
@@ -602,6 +593,29 @@ func writeCommentLine(b *bytes.Buffer, src []byte, prefix []byte, limit int) {
 			word = append(word, char)
 		}
 	}
+}
+
+func writeDecodeJSONFunc(b *bytes.Buffer, model *Model) {
+	article := "a"
+	switch model.Name[0] {
+	case 'A', 'E', 'I', 'O', 'U':
+		article = "an"
+	}
+	fmt.Fprintf(b, "// DecodeJSON decodes %s %s value from JSON.\n", article, model.Name)
+	if model.Network {
+		fmt.Fprintf(b, `func (v %s) DecodeJSON(d *json.Decoder, network *NetworkIdentifier) error {
+`, model.Name)
+	} else {
+		fmt.Fprintf(b, `func (v %s) DecodeJSON(d *json.Decoder) error {
+`, model.Name)
+	}
+	for _, field := range model.Fields {
+		_ = field
+	}
+	b.WriteString(`	fmt.Println(string(d.Buf))
+	return nil
+}
+`)
 }
 
 func writeEncodeJSONField(b *bytes.Buffer, field *Field, opt *EncoderOpt, cond string, enc string) {
@@ -799,7 +813,87 @@ func writeEncodeJSONFunc(b *bytes.Buffer, model *Model) {
 }
 
 func writeEndpoints(b *bytes.Buffer, endpoints []*Endpoint) {
-	writeClient(b)
+	for _, e := range endpoints {
+		fmt.Fprintf(b, `// %s calls the %s endpoint.
+//
+`, e.Name, e.URL)
+		summary := strings.TrimSpace(e.Summary)
+		if len(summary) > 0 && summary[len(summary)-1] != '\n' {
+			summary += "."
+		}
+		writeComment(b, summary, 0)
+		b.WriteString("//\n")
+		writeComment(b, e.Description, 0)
+		enc := "c.netjson)"
+		if e.Name == "NetworkList" {
+			enc = ")"
+		}
+		fmt.Fprintf(b, `func (c *Client) %s(
+	ctx context.Context, req *%s, resp *%s, retry retry.Handler,
+) *ClientError {
+	if len(c.netjson) == 0 {
+		c.err.reset()
+		c.err.CallError = errors.New(
+			"api: the SetNetwork method must be called before making a Client.%s call",
+		)
+		return c.err
+	}
+	c.req = req.EncodeJSON(c.req[:0], %s
+	it := retry.Iter()
+	var (
+		err   error
+		hreq  *http.Request
+		hresp *http.Response
+	)
+	for it.Next() {
+		hreq, err = http.NewRequestWithContext(ctx, "POST", c.baseURL+"%s", bytes.NewReader(c.req))
+		if err != nil {
+			continue
+		}
+		hreq.Header.Set("Content-Type", "application/json")
+		hresp, err = HTTPClient.Do(hreq)
+		if err != nil {
+			continue
+		}
+		switch hresp.StatusCode {
+		case 200:
+			err = c.dec.ResetFromReadCloser(hresp.Body)
+			if err != nil {
+				continue
+			}
+			resp.Reset()
+			err = resp.DecodeJSON(c.dec)
+			if err == nil {
+				return nil
+			}
+		case 500:
+			err = c.dec.ResetFromReadCloser(hresp.Body)
+			if err != nil {
+				continue
+			}
+			c.err.reset()
+			err = c.err.RosettaError.DecodeJSON(c.dec)
+			if err == nil {
+				return c.err
+			}
+		default:
+			io.Copy(io.Discard, hresp.Body)
+			hresp.Body.Close()
+			err = fmt.Errorf(
+				"api: got HTTP status code %%d from %s",
+				hresp.StatusCode,
+			)
+		}
+	}
+	if err != nil {
+		c.err.reset()
+		c.err.CallError = err
+		return c.err
+	}
+	return nil
+}
+`, e.Name, e.Request, e.Response, e.Name, enc, e.URL, e.URL)
+	}
 }
 
 func writeEnums(b *bytes.Buffer, models []*Model) {
@@ -832,6 +926,7 @@ func (v %s) Equal(o %s) bool {
 		}
 		ident := field.Ident
 		if field.OptionalType != "" {
+			fmt.Fprintf(b, "v.%s.Set == o.%s.Set && \n\t\t", ident, ident)
 			ident += ".Value"
 		}
 		switch field.Type {
@@ -859,9 +954,6 @@ func (v %s) Equal(o %s) bool {
 					fmt.Fprintf(b, "v.%s == o.%s", ident, ident)
 				}
 			}
-		}
-		if field.OptionalType != "" {
-			fmt.Fprintf(b, " &&\n\t\tv.%s.Set == o.%s.Set", field.Ident, field.Ident)
 		}
 		written = true
 	}
@@ -921,6 +1013,7 @@ func writeModels(b *bytes.Buffer, models []*Model) {
 		switch model.Type {
 		case "struct":
 			writeStructModel(b, model)
+			writeDecodeJSONFunc(b, model)
 			writeEncodeJSONFunc(b, model)
 			writeEqualFunc(b, model, equals)
 			writeResetFunc(b, model)
@@ -1001,9 +1094,15 @@ func writePrelude(b *bytes.Buffer) {
 package api
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 
 	"github.com/tav/validate-rosetta/json"
+	"github.com/tav/validate-rosetta/retry"
 )
 
 `)
